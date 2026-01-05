@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.002.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Electre_Customize_DotNet", "Electre_Customize_DotNet.csproj", "{CADE40F7-F0BD-4E0E-8666-344B26647139}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{CADE40F7-F0BD-4E0E-8666-344B26647139}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CADE40F7-F0BD-4E0E-8666-344B26647139}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CADE40F7-F0BD-4E0E-8666-344B26647139}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CADE40F7-F0BD-4E0E-8666-344B26647139}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {64E504A5-8DCA-4102-B586-9833A356C8A5}
+	EndGlobalSection
+EndGlobal
