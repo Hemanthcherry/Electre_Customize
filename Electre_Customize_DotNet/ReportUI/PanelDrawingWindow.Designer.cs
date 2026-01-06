@@ -43,9 +43,9 @@
             groupBox1.Controls.Add(chkListPanel);
             groupBox1.Controls.Add(btnProceed);
             groupBox1.Font = new Font("Segoe UI", 10F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            groupBox1.Location = new Point(210, 142);
+            groupBox1.Location = new Point(210, 112);
             groupBox1.Name = "groupBox1";
-            groupBox1.Size = new Size(485, 436);
+            groupBox1.Size = new Size(485, 363);
             groupBox1.TabIndex = 5;
             groupBox1.TabStop = false;
             groupBox1.Text = "Panels";
@@ -55,7 +55,7 @@
             lblPanelCount.AutoSize = true;
             lblPanelCount.Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold | FontStyle.Italic, GraphicsUnit.Point, 0);
             lblPanelCount.ForeColor = Color.Blue;
-            lblPanelCount.Location = new Point(51, 379);
+            lblPanelCount.Location = new Point(51, 306);
             lblPanelCount.Margin = new Padding(4, 0, 4, 0);
             lblPanelCount.Name = "lblPanelCount";
             lblPanelCount.Size = new Size(189, 25);
@@ -71,14 +71,14 @@
             chkListPanel.Location = new Point(12, 47);
             chkListPanel.Name = "chkListPanel";
             chkListPanel.ScrollAlwaysVisible = true;
-            chkListPanel.Size = new Size(450, 314);
+            chkListPanel.Size = new Size(450, 252);
             chkListPanel.TabIndex = 1;
             chkListPanel.ItemCheck += chkListPanel_ItemCheck;
             // 
             // btnProceed
             // 
             btnProceed.BackColor = SystemColors.GradientActiveCaption;
-            btnProceed.Location = new Point(316, 376);
+            btnProceed.Location = new Point(316, 312);
             btnProceed.Name = "btnProceed";
             btnProceed.Size = new Size(125, 42);
             btnProceed.TabIndex = 0;
@@ -88,7 +88,7 @@
             // 
             // txtPanelDigit
             // 
-            txtPanelDigit.Location = new Point(467, 584);
+            txtPanelDigit.Location = new Point(467, 482);
             txtPanelDigit.Name = "txtPanelDigit";
             txtPanelDigit.PlaceholderText = "PanelDigit";
             txtPanelDigit.Size = new Size(150, 31);
@@ -114,7 +114,7 @@
             Controls.Add(txtPanelDigit);
             Controls.Add(groupBox1);
             Name = "PanelDrawingWindow";
-            Size = new Size(893, 833);
+            Size = new Size(893, 640);
             groupBox1.ResumeLayout(false);
             groupBox1.PerformLayout();
             ResumeLayout(false);

@@ -38,9 +38,7 @@
             btnPowerOn = new Button();
             btnCompBrk = new Button();
             btnCable = new Button();
-            panelTop = new Panel();
             btnClear = new Button();
-            lblTitle = new Label();
             panelButtom = new Panel();
             variantName = new Label();
             btnOk = new Button();
@@ -50,7 +48,6 @@
             lblHeading = new Label();
             InfoTtp = new ToolTip(components);
             panelLeft.SuspendLayout();
-            panelTop.SuspendLayout();
             panelButtom.SuspendLayout();
             panelMain.SuspendLayout();
             SuspendLayout();
@@ -78,6 +75,7 @@
             btnpanelSchedules.Name = "btnpanelSchedules";
             btnpanelSchedules.UseVisualStyleBackColor = false;
             btnpanelSchedules.Click += btnPanelSchedules_Click;
+            btnCont.MouseHover += btnPanelDwgSchedules_MouseHover;
             // 
             // btnPanel
             // 
@@ -88,6 +86,7 @@
             btnPanel.Name = "btnPanel";
             btnPanel.UseVisualStyleBackColor = false;
             btnPanel.Click += btnPanel_Click;
+            btnCont.MouseHover += btnPanelDwg_MouseHover;
             // 
             // btnMegger
             // 
@@ -98,6 +97,7 @@
             btnMegger.Name = "btnMegger";
             btnMegger.UseVisualStyleBackColor = false;
             btnMegger.Click += btnMegger_Click;
+            btnCont.MouseHover += btnMegger_MouseHover;
             // 
             // btnCont
             // 
@@ -119,6 +119,7 @@
             btnPowerOn.Name = "btnPowerOn";
             btnPowerOn.UseVisualStyleBackColor = false;
             btnPowerOn.Click += btnPowerOn_Click;
+            btnCont.MouseHover += btnPowerOn_MouseHover;
             // 
             // btnCompBrk
             // 
@@ -142,15 +143,6 @@
             btnCable.Click += btnCable_Click;
             btnCable.MouseHover += btnCable_MouseHover;
             // 
-            // panelTop
-            // 
-            panelTop.BackColor = Color.Lavender;
-            panelTop.BorderStyle = BorderStyle.FixedSingle;
-            panelTop.Controls.Add(btnClear);
-            panelTop.Controls.Add(lblTitle);
-            resources.ApplyResources(panelTop, "panelTop");
-            panelTop.Name = "panelTop";
-            // 
             // btnClear
             // 
             btnClear.BackColor = Color.Transparent;
@@ -161,16 +153,12 @@
             btnClear.UseVisualStyleBackColor = false;
             btnClear.Click += btnClear_Click;
             // 
-            // lblTitle
-            // 
-            resources.ApplyResources(lblTitle, "lblTitle");
-            lblTitle.Name = "lblTitle";
-            // 
             // panelButtom
             // 
             resources.ApplyResources(panelButtom, "panelButtom");
             panelButtom.BackColor = Color.Lavender;
             panelButtom.BorderStyle = BorderStyle.FixedSingle;
+            panelButtom.Controls.Add(btnClear);
             panelButtom.Controls.Add(variantName);
             panelButtom.Controls.Add(btnOk);
             panelButtom.Controls.Add(btnClose);
@@ -230,15 +218,12 @@
             AutoScaleMode = AutoScaleMode.Font;
             Controls.Add(panelMain);
             Controls.Add(panelButtom);
-            Controls.Add(panelTop);
             Controls.Add(panelLeft);
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
             Name = "CustomReportWindow";
             Load += CustomReportWindow_Load;
             panelLeft.ResumeLayout(false);
-            panelTop.ResumeLayout(false);
-            panelTop.PerformLayout();
             panelButtom.ResumeLayout(false);
             panelButtom.PerformLayout();
             panelMain.ResumeLayout(false);
@@ -249,7 +234,6 @@
         #endregion
 
         private Panel panelLeft;
-        private Panel panelTop;
         private Panel panelButtom;
         private Panel panelMain;
         private Button btnPowerOn;
@@ -260,7 +244,6 @@
         private Button btnCont;
         private Label lblSubHeading;
         private Label lblHeading;
-        private Label lblTitle;
         public Button btnOk;
         public Button btnClose;
         private ToolTip InfoTtp;

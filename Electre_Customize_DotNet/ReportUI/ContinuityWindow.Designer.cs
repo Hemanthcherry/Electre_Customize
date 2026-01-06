@@ -45,7 +45,7 @@
             groupBox4.Controls.Add(chkLoom);
             groupBox4.Controls.Add(chkListLoom);
             groupBox4.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-            groupBox4.Location = new Point(231, 165);
+            groupBox4.Location = new Point(231, 67);
             groupBox4.Margin = new Padding(7, 8, 7, 8);
             groupBox4.Name = "groupBox4";
             groupBox4.Padding = new Padding(4, 5, 4, 5);
@@ -53,7 +53,6 @@
             groupBox4.TabIndex = 45;
             groupBox4.TabStop = false;
             groupBox4.Text = "Loom";
-           // groupBox4.Enter += groupBox4_Enter;
             // 
             // lblTotalLoom
             // 
@@ -62,7 +61,7 @@
             lblTotalLoom.ForeColor = Color.Blue;
             lblTotalLoom.Location = new Point(275, 456);
             lblTotalLoom.Name = "lblTotalLoom";
-            lblTotalLoom.Size = new Size(111, 25);
+            lblTotalLoom.Size = new Size(130, 25);
             lblTotalLoom.TabIndex = 41;
             lblTotalLoom.Text = "Total Looms: 0";
             // 
@@ -77,7 +76,6 @@
             lblLoomCount.Size = new Size(197, 25);
             lblLoomCount.TabIndex = 40;
             lblLoomCount.Text = "Selected Items Count: 0";
-           // lblLoomCount.Click += lblLoomCount_Click;
             // 
             // txtLoomFilter
             // 
@@ -119,7 +117,6 @@
             chkListLoom.Size = new Size(410, 310);
             chkListLoom.TabIndex = 38;
             chkListLoom.ItemCheck += chkListLoom_ItemCheck;
-           // chkListLoom.SelectedIndexChanged += chkListLoom_SelectedIndexChanged;
             // 
             // ContinuityWindow
             // 
@@ -128,7 +125,7 @@
             Controls.Add(groupBox4);
             Margin = new Padding(7, 8, 7, 8);
             Name = "ContinuityWindow";
-            Size = new Size(893, 833);
+            Size = new Size(893, 640);
             groupBox4.ResumeLayout(false);
             groupBox4.PerformLayout();
             ResumeLayout(false);

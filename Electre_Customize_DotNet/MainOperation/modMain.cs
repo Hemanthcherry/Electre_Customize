@@ -1111,11 +1111,15 @@ namespace Electre_Customize_DotNet.MainOperation
                             PowerOnReport powerOn = new PowerOnReport(modExcelInst, new List<string> { panel });
                             powerOn.PowerOnReportGeneration();
 
-                            _loadingForm.Invoke(() =>
+                          /*  _loadingForm.Invoke(() =>
                             {
                                 _loadingForm.LbsLoadinMessag = $"Panel {panel} Report Generated";
-                            });
+                            });*/
                         }
+                        _loadingForm.Invoke(() =>
+                        {
+                            _loadingForm.LbsLoadinMessag = $"Power On Reports Generated";
+                        });
                     }
 
                     // panel drawing

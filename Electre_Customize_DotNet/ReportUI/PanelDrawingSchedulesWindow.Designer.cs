@@ -29,6 +29,7 @@
         private void InitializeComponent()
         {
             groupBox1 = new GroupBox();
+            chkSheet = new CheckBox();
             chkListSheets = new CheckedListBox();
             btnFilter = new Button();
             label1 = new Label();
@@ -53,20 +54,33 @@
             chkSheetPower = new CheckBox();
             chkLoomMeg = new CheckBox();
             chkLoomCon = new CheckBox();
-            chkSheet = new CheckBox();
             groupBox1.SuspendLayout();
             SuspendLayout();
             // 
             // groupBox1
             // 
+            groupBox1.Controls.Add(chkSheet);
             groupBox1.Controls.Add(chkListSheets);
-            groupBox1.Controls.Add(btnFilter);
-            groupBox1.Location = new Point(181, 29);
+            groupBox1.Location = new Point(181, 12);
             groupBox1.Name = "groupBox1";
-            groupBox1.Size = new Size(443, 249);
+            groupBox1.Size = new Size(443, 160);
             groupBox1.TabIndex = 5;
             groupBox1.TabStop = false;
             groupBox1.Text = "Sheet List";
+            // 
+            // chkSheet
+            // 
+            chkSheet.AutoSize = true;
+            chkSheet.Cursor = Cursors.Hand;
+            chkSheet.Font = new Font("Segoe UI", 9.75F, FontStyle.Bold);
+            chkSheet.Location = new Point(291, -4);
+            chkSheet.Margin = new Padding(4, 5, 4, 5);
+            chkSheet.Name = "chkSheet";
+            chkSheet.Size = new Size(127, 32);
+            chkSheet.TabIndex = 51;
+            chkSheet.Text = "Select All";
+            chkSheet.UseVisualStyleBackColor = true;
+            chkSheet.CheckedChanged += chkSheet_CheckedChanged;
             // 
             // chkListSheets
             // 
@@ -75,16 +89,17 @@
             chkListSheets.Location = new Point(12, 28);
             chkListSheets.Name = "chkListSheets";
             chkListSheets.ScrollAlwaysVisible = true;
-            chkListSheets.Size = new Size(391, 172);
+            chkListSheets.Size = new Size(391, 116);
             chkListSheets.TabIndex = 1;
             chkListSheets.ItemCheck += chkListSheet_ItemCheck;
             // 
             // btnFilter
             // 
-            btnFilter.BackColor = SystemColors.GradientActiveCaption;
-            btnFilter.Location = new Point(291, 207);
+            btnFilter.BackColor = SystemColors.ActiveCaption;
+            btnFilter.Font = new Font("Segoe UI", 10F, FontStyle.Bold, GraphicsUnit.Point, 0);
+            btnFilter.Location = new Point(630, 122);
             btnFilter.Name = "btnFilter";
-            btnFilter.Size = new Size(112, 34);
+            btnFilter.Size = new Size(115, 50);
             btnFilter.TabIndex = 0;
             btnFilter.Text = "Filter";
             btnFilter.UseVisualStyleBackColor = false;
@@ -93,7 +108,7 @@
             // label1
             // 
             label1.AutoSize = true;
-            label1.Location = new Point(68, 324);
+            label1.Location = new Point(68, 210);
             label1.Name = "label1";
             label1.Size = new Size(59, 25);
             label1.TabIndex = 6;
@@ -103,25 +118,25 @@
             // 
             listBox1.FormattingEnabled = true;
             listBox1.ItemHeight = 25;
-            listBox1.Location = new Point(23, 294);
+            listBox1.Location = new Point(23, 180);
             listBox1.Name = "listBox1";
-            listBox1.Size = new Size(415, 504);
+            listBox1.Size = new Size(415, 454);
             listBox1.TabIndex = 7;
             // 
             // listBox2
             // 
             listBox2.FormattingEnabled = true;
             listBox2.ItemHeight = 25;
-            listBox2.Location = new Point(460, 294);
+            listBox2.Location = new Point(460, 180);
             listBox2.Name = "listBox2";
-            listBox2.Size = new Size(409, 504);
+            listBox2.Size = new Size(409, 454);
             listBox2.TabIndex = 8;
             // 
             // label2
             // 
             label2.AutoSize = true;
             label2.Font = new Font("Segoe UI", 10F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            label2.Location = new Point(48, 306);
+            label2.Location = new Point(48, 192);
             label2.Name = "label2";
             label2.Size = new Size(103, 28);
             label2.TabIndex = 9;
@@ -131,7 +146,7 @@
             // 
             labelMegger.AutoSize = true;
             labelMegger.Font = new Font("Segoe UI", 10F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            labelMegger.Location = new Point(488, 589);
+            labelMegger.Location = new Point(488, 418);
             labelMegger.Name = "labelMegger";
             labelMegger.Size = new Size(85, 28);
             labelMegger.TabIndex = 17;
@@ -141,7 +156,7 @@
             // 
             label4.AutoSize = true;
             label4.Font = new Font("Segoe UI", 10F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            label4.Location = new Point(488, 311);
+            label4.Location = new Point(488, 197);
             label4.Name = "label4";
             label4.Size = new Size(111, 28);
             label4.TabIndex = 26;
@@ -151,7 +166,7 @@
             // 
             labelPowerOn.AutoSize = true;
             labelPowerOn.Font = new Font("Segoe UI", 10F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            labelPowerOn.Location = new Point(48, 655);
+            labelPowerOn.Location = new Point(48, 483);
             labelPowerOn.Name = "labelPowerOn";
             labelPowerOn.Size = new Size(97, 28);
             labelPowerOn.TabIndex = 33;
@@ -160,7 +175,7 @@
             // lblLoomCL
             // 
             lblLoomCL.AutoSize = true;
-            lblLoomCL.Location = new Point(48, 404);
+            lblLoomCL.Location = new Point(48, 269);
             lblLoomCL.Name = "lblLoomCL";
             lblLoomCL.Size = new Size(58, 25);
             lblLoomCL.TabIndex = 36;
@@ -169,7 +184,7 @@
             // lblLoomMegger
             // 
             lblLoomMegger.AutoSize = true;
-            lblLoomMegger.Location = new Point(488, 681);
+            lblLoomMegger.Location = new Point(488, 542);
             lblLoomMegger.Name = "lblLoomMegger";
             lblLoomMegger.Size = new Size(58, 25);
             lblLoomMegger.TabIndex = 37;
@@ -178,7 +193,7 @@
             // lblLoomCont
             // 
             lblLoomCont.AutoSize = true;
-            lblLoomCont.Location = new Point(488, 400);
+            lblLoomCont.Location = new Point(488, 286);
             lblLoomCont.Name = "lblLoomCont";
             lblLoomCont.Size = new Size(58, 25);
             lblLoomCont.TabIndex = 38;
@@ -187,7 +202,7 @@
             // lblSheetCL
             // 
             lblSheetCL.AutoSize = true;
-            lblSheetCL.Location = new Point(48, 569);
+            lblSheetCL.Location = new Point(48, 408);
             lblSheetCL.Name = "lblSheetCL";
             lblSheetCL.Size = new Size(56, 25);
             lblSheetCL.TabIndex = 39;
@@ -196,7 +211,7 @@
             // lblPanel
             // 
             lblPanel.AutoSize = true;
-            lblPanel.Location = new Point(48, 723);
+            lblPanel.Location = new Point(48, 550);
             lblPanel.Name = "lblPanel";
             lblPanel.Size = new Size(56, 25);
             lblPanel.TabIndex = 40;
@@ -207,11 +222,11 @@
             chklistLoomCL.CheckOnClick = true;
             chklistLoomCL.Font = new Font("Segoe UI", 10F);
             chklistLoomCL.FormattingEnabled = true;
-            chklistLoomCL.Location = new Point(138, 353);
+            chklistLoomCL.Location = new Point(138, 239);
             chklistLoomCL.Margin = new Padding(4, 5, 4, 5);
             chklistLoomCL.Name = "chklistLoomCL";
             chklistLoomCL.ScrollAlwaysVisible = true;
-            chklistLoomCL.Size = new Size(286, 128);
+            chklistLoomCL.Size = new Size(286, 97);
             chklistLoomCL.TabIndex = 41;
             chklistLoomCL.ItemCheck += chkListLoomCL_ItemCheck;
             // 
@@ -220,7 +235,7 @@
             chkListSheetCL.CheckOnClick = true;
             chkListSheetCL.Font = new Font("Segoe UI", 10F);
             chkListSheetCL.FormattingEnabled = true;
-            chkListSheetCL.Location = new Point(138, 542);
+            chkListSheetCL.Location = new Point(138, 379);
             chkListSheetCL.Margin = new Padding(4, 5, 4, 5);
             chkListSheetCL.Name = "chkListSheetCL";
             chkListSheetCL.ScrollAlwaysVisible = true;
@@ -233,7 +248,7 @@
             chkListLoomCont.CheckOnClick = true;
             chkListLoomCont.Font = new Font("Segoe UI", 10F);
             chkListLoomCont.FormattingEnabled = true;
-            chkListLoomCont.Location = new Point(569, 368);
+            chkListLoomCont.Location = new Point(569, 254);
             chkListLoomCont.Margin = new Padding(4, 5, 4, 5);
             chkListLoomCont.Name = "chkListLoomCont";
             chkListLoomCont.ScrollAlwaysVisible = true;
@@ -246,7 +261,7 @@
             chkListLoomMeg.CheckOnClick = true;
             chkListLoomMeg.Font = new Font("Segoe UI", 10F);
             chkListLoomMeg.FormattingEnabled = true;
-            chkListLoomMeg.Location = new Point(569, 632);
+            chkListLoomMeg.Location = new Point(569, 495);
             chkListLoomMeg.Margin = new Padding(4, 5, 4, 5);
             chkListLoomMeg.Name = "chkListLoomMeg";
             chkListLoomMeg.ScrollAlwaysVisible = true;
@@ -259,7 +274,7 @@
             chkListSheetPowerOn.CheckOnClick = true;
             chkListSheetPowerOn.Font = new Font("Segoe UI", 10F);
             chkListSheetPowerOn.FormattingEnabled = true;
-            chkListSheetPowerOn.Location = new Point(138, 690);
+            chkListSheetPowerOn.Location = new Point(138, 530);
             chkListSheetPowerOn.Margin = new Padding(4, 5, 4, 5);
             chkListSheetPowerOn.Name = "chkListSheetPowerOn";
             chkListSheetPowerOn.ScrollAlwaysVisible = true;
@@ -272,7 +287,7 @@
             chkLoomCL.AutoSize = true;
             chkLoomCL.Cursor = Cursors.Hand;
             chkLoomCL.Font = new Font("Segoe UI", 9.75F, FontStyle.Bold);
-            chkLoomCL.Location = new Point(292, 319);
+            chkLoomCL.Location = new Point(292, 205);
             chkLoomCL.Margin = new Padding(4, 5, 4, 5);
             chkLoomCL.Name = "chkLoomCL";
             chkLoomCL.Size = new Size(127, 32);
@@ -286,7 +301,7 @@
             chkSheetCL.AutoSize = true;
             chkSheetCL.Cursor = Cursors.Hand;
             chkSheetCL.Font = new Font("Segoe UI", 9.75F, FontStyle.Bold);
-            chkSheetCL.Location = new Point(292, 508);
+            chkSheetCL.Location = new Point(292, 344);
             chkSheetCL.Margin = new Padding(4, 5, 4, 5);
             chkSheetCL.Name = "chkSheetCL";
             chkSheetCL.Size = new Size(127, 32);
@@ -300,7 +315,7 @@
             chkSheetPower.AutoSize = true;
             chkSheetPower.Cursor = Cursors.Hand;
             chkSheetPower.Font = new Font("Segoe UI", 9.75F, FontStyle.Bold);
-            chkSheetPower.Location = new Point(292, 655);
+            chkSheetPower.Location = new Point(292, 492);
             chkSheetPower.Margin = new Padding(4, 5, 4, 5);
             chkSheetPower.Name = "chkSheetPower";
             chkSheetPower.Size = new Size(127, 32);
@@ -314,7 +329,7 @@
             chkLoomMeg.AutoSize = true;
             chkLoomMeg.Cursor = Cursors.Hand;
             chkLoomMeg.Font = new Font("Segoe UI", 9.75F, FontStyle.Bold);
-            chkLoomMeg.Location = new Point(731, 596);
+            chkLoomMeg.Location = new Point(731, 456);
             chkLoomMeg.Margin = new Padding(4, 5, 4, 5);
             chkLoomMeg.Name = "chkLoomMeg";
             chkLoomMeg.Size = new Size(127, 32);
@@ -328,7 +343,7 @@
             chkLoomCon.AutoSize = true;
             chkLoomCon.Cursor = Cursors.Hand;
             chkLoomCon.Font = new Font("Segoe UI", 9.75F, FontStyle.Bold);
-            chkLoomCon.Location = new Point(731, 330);
+            chkLoomCon.Location = new Point(731, 216);
             chkLoomCon.Margin = new Padding(4, 5, 4, 5);
             chkLoomCon.Name = "chkLoomCon";
             chkLoomCon.Size = new Size(127, 32);
@@ -337,25 +352,11 @@
             chkLoomCon.UseVisualStyleBackColor = true;
             chkLoomCon.CheckedChanged += chkLoomCon_CheckedChanged;
             // 
-            // chkSheet
-            // 
-            chkSheet.AutoSize = true;
-            chkSheet.Cursor = Cursors.Hand;
-            chkSheet.Font = new Font("Segoe UI", 9.75F, FontStyle.Bold);
-            chkSheet.Location = new Point(497, 5);
-            chkSheet.Margin = new Padding(4, 5, 4, 5);
-            chkSheet.Name = "chkSheet";
-            chkSheet.Size = new Size(127, 32);
-            chkSheet.TabIndex = 51;
-            chkSheet.Text = "Select All";
-            chkSheet.UseVisualStyleBackColor = true;
-            chkSheet.CheckedChanged += chkSheet_CheckedChanged;
-            // 
             // PanelDrawingSchedulesWindow
             // 
             AutoScaleDimensions = new SizeF(10F, 25F);
             AutoScaleMode = AutoScaleMode.Font;
-            Controls.Add(chkSheet);
+            Controls.Add(btnFilter);
             Controls.Add(chkLoomCon);
             Controls.Add(chkLoomMeg);
             Controls.Add(chkSheetPower);
@@ -380,8 +381,9 @@
             Controls.Add(label1);
             Controls.Add(groupBox1);
             Name = "PanelDrawingSchedulesWindow";
-            Size = new Size(893, 833);
+            Size = new Size(893, 640);
             groupBox1.ResumeLayout(false);
+            groupBox1.PerformLayout();
             ResumeLayout(false);
             PerformLayout();
         }

@@ -63,7 +63,7 @@
             chkEqup.AutoSize = true;
             chkEqup.Cursor = Cursors.Hand;
             chkEqup.Font = new Font("Segoe UI", 9.75F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            chkEqup.Location = new Point(300, 62);
+            chkEqup.Location = new Point(300, 46);
             chkEqup.Margin = new Padding(4, 5, 4, 5);
             chkEqup.Name = "chkEqup";
             chkEqup.Size = new Size(127, 32);
@@ -76,7 +76,7 @@
             // 
             txtEqupFilter.Font = new Font("Segoe UI", 12F, FontStyle.Italic);
             txtEqupFilter.ForeColor = Color.Silver;
-            txtEqupFilter.Location = new Point(9, 55);
+            txtEqupFilter.Location = new Point(9, 41);
             txtEqupFilter.Margin = new Padding(4, 5, 4, 5);
             txtEqupFilter.Name = "txtEqupFilter";
             txtEqupFilter.Size = new Size(273, 39);
@@ -91,14 +91,13 @@
             chkListEqup.CheckOnClick = true;
             chkListEqup.Font = new Font("Consolas", 11F, FontStyle.Regular, GraphicsUnit.Point, 0);
             chkListEqup.FormattingEnabled = true;
-            chkListEqup.Location = new Point(9, 113);
+            chkListEqup.Location = new Point(9, 90);
             chkListEqup.Margin = new Padding(4, 5, 4, 5);
             chkListEqup.Name = "chkListEqup";
             chkListEqup.ScrollAlwaysVisible = true;
-            chkListEqup.Size = new Size(410, 214);
+            chkListEqup.Size = new Size(410, 154);
             chkListEqup.TabIndex = 38;
             chkListEqup.ItemCheck += chkListEqup_ItemCheck;
-            //chkListEqup.SelectedIndexChanged += chkListEqup_SelectedIndexChanged;
             // 
             // groupBox1
             // 
@@ -112,7 +111,7 @@
             groupBox1.Margin = new Padding(7, 8, 7, 8);
             groupBox1.Name = "groupBox1";
             groupBox1.Padding = new Padding(4, 5, 4, 5);
-            groupBox1.Size = new Size(429, 400);
+            groupBox1.Size = new Size(429, 307);
             groupBox1.TabIndex = 40;
             groupBox1.TabStop = false;
             groupBox1.Text = "Equipment";
@@ -122,25 +121,23 @@
             lblTotalEque.AutoSize = true;
             lblTotalEque.Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold | FontStyle.Italic, GraphicsUnit.Point, 0);
             lblTotalEque.ForeColor = Color.Blue;
-            lblTotalEque.Location = new Point(223, 357);
+            lblTotalEque.Location = new Point(223, 275);
             lblTotalEque.Name = "lblTotalEque";
             lblTotalEque.Size = new Size(170, 25);
             lblTotalEque.TabIndex = 42;
             lblTotalEque.Text = "Total Equipments: 0";
-           // lblTotalEque.Click += lblTotalEque_Click;
             // 
             // lblEqupCount
             // 
             lblEqupCount.AutoSize = true;
             lblEqupCount.Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold | FontStyle.Italic, GraphicsUnit.Point, 0);
             lblEqupCount.ForeColor = Color.Blue;
-            lblEqupCount.Location = new Point(197, 332);
+            lblEqupCount.Location = new Point(197, 249);
             lblEqupCount.Margin = new Padding(4, 0, 4, 0);
             lblEqupCount.Name = "lblEqupCount";
             lblEqupCount.Size = new Size(197, 25);
             lblEqupCount.TabIndex = 41;
             lblEqupCount.Text = "Selected Items Count: 0";
-           // lblEqupCount.Click += lblEqupCount_Click;
             // 
             // groupBox2
             // 
@@ -154,7 +151,7 @@
             groupBox2.Margin = new Padding(7, 8, 7, 8);
             groupBox2.Name = "groupBox2";
             groupBox2.Padding = new Padding(4, 5, 4, 5);
-            groupBox2.Size = new Size(429, 400);
+            groupBox2.Size = new Size(429, 307);
             groupBox2.TabIndex = 41;
             groupBox2.TabStop = false;
             groupBox2.Text = "Break Connector";
@@ -164,7 +161,7 @@
             lblTotalBreckcon.AutoSize = true;
             lblTotalBreckcon.Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold | FontStyle.Italic, GraphicsUnit.Point, 0);
             lblTotalBreckcon.ForeColor = Color.Blue;
-            lblTotalBreckcon.Location = new Point(174, 357);
+            lblTotalBreckcon.Location = new Point(174, 274);
             lblTotalBreckcon.Name = "lblTotalBreckcon";
             lblTotalBreckcon.Size = new Size(209, 25);
             lblTotalBreckcon.TabIndex = 43;
@@ -175,19 +172,18 @@
             lblBrkCount.AutoSize = true;
             lblBrkCount.Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold | FontStyle.Italic, GraphicsUnit.Point, 0);
             lblBrkCount.ForeColor = Color.Blue;
-            lblBrkCount.Location = new Point(186, 332);
+            lblBrkCount.Location = new Point(186, 247);
             lblBrkCount.Margin = new Padding(4, 0, 4, 0);
             lblBrkCount.Name = "lblBrkCount";
             lblBrkCount.Size = new Size(197, 25);
             lblBrkCount.TabIndex = 42;
             lblBrkCount.Text = "Selected Items Count: 0";
-           // lblBrkCount.Click += lblBrkCount_Click;
             // 
             // txtBrkFilter
             // 
             txtBrkFilter.Font = new Font("Segoe UI", 12F, FontStyle.Italic);
             txtBrkFilter.ForeColor = Color.Silver;
-            txtBrkFilter.Location = new Point(9, 55);
+            txtBrkFilter.Location = new Point(9, 37);
             txtBrkFilter.Margin = new Padding(4, 5, 4, 5);
             txtBrkFilter.Name = "txtBrkFilter";
             txtBrkFilter.Size = new Size(273, 39);
@@ -202,7 +198,7 @@
             chkBrk.AutoSize = true;
             chkBrk.Cursor = Cursors.Hand;
             chkBrk.Font = new Font("Segoe UI", 9.75F, FontStyle.Bold);
-            chkBrk.Location = new Point(300, 62);
+            chkBrk.Location = new Point(300, 41);
             chkBrk.Margin = new Padding(4, 5, 4, 5);
             chkBrk.Name = "chkBrk";
             chkBrk.Size = new Size(127, 32);
@@ -216,14 +212,13 @@
             chkListBrk.CheckOnClick = true;
             chkListBrk.Font = new Font("Consolas", 11F);
             chkListBrk.FormattingEnabled = true;
-            chkListBrk.Location = new Point(9, 113);
+            chkListBrk.Location = new Point(9, 88);
             chkListBrk.Margin = new Padding(4, 5, 4, 5);
             chkListBrk.Name = "chkListBrk";
             chkListBrk.ScrollAlwaysVisible = true;
-            chkListBrk.Size = new Size(410, 214);
+            chkListBrk.Size = new Size(410, 154);
             chkListBrk.TabIndex = 38;
             chkListBrk.ItemCheck += chkListBrk_ItemCheck;
-            //chkListBrk.SelectedIndexChanged += chkListBrk_SelectedIndexChanged;
             // 
             // groupBox3
             // 
@@ -233,11 +228,11 @@
             groupBox3.Controls.Add(chkMisc);
             groupBox3.Controls.Add(chkListMisc);
             groupBox3.Font = new Font("Segoe UI", 12F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            groupBox3.Location = new Point(457, 425);
+            groupBox3.Location = new Point(457, 322);
             groupBox3.Margin = new Padding(7, 8, 7, 8);
             groupBox3.Name = "groupBox3";
             groupBox3.Padding = new Padding(4, 5, 4, 5);
-            groupBox3.Size = new Size(429, 400);
+            groupBox3.Size = new Size(429, 309);
             groupBox3.TabIndex = 43;
             groupBox3.TabStop = false;
             groupBox3.Text = "MISC";
@@ -247,7 +242,7 @@
             lblTotalmis.AutoSize = true;
             lblTotalmis.Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold | FontStyle.Italic, GraphicsUnit.Point, 0);
             lblTotalmis.ForeColor = Color.Blue;
-            lblTotalmis.Location = new Point(257, 358);
+            lblTotalmis.Location = new Point(257, 272);
             lblTotalmis.Name = "lblTotalmis";
             lblTotalmis.Size = new Size(106, 25);
             lblTotalmis.TabIndex = 44;
@@ -258,19 +253,18 @@
             lblMiscCount.AutoSize = true;
             lblMiscCount.Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold | FontStyle.Italic, GraphicsUnit.Point, 0);
             lblMiscCount.ForeColor = Color.Blue;
-            lblMiscCount.Location = new Point(166, 332);
+            lblMiscCount.Location = new Point(174, 249);
             lblMiscCount.Margin = new Padding(4, 0, 4, 0);
             lblMiscCount.Name = "lblMiscCount";
             lblMiscCount.Size = new Size(197, 25);
             lblMiscCount.TabIndex = 43;
             lblMiscCount.Text = "Selected Items Count: 0";
-           // lblMiscCount.Click += lblMiscCount_Click;
             // 
             // txtMiscFilter
             // 
             txtMiscFilter.Font = new Font("Segoe UI", 12F, FontStyle.Italic);
             txtMiscFilter.ForeColor = Color.Silver;
-            txtMiscFilter.Location = new Point(9, 55);
+            txtMiscFilter.Location = new Point(9, 41);
             txtMiscFilter.Margin = new Padding(4, 5, 4, 5);
             txtMiscFilter.Name = "txtMiscFilter";
             txtMiscFilter.Size = new Size(273, 39);
@@ -285,7 +279,7 @@
             chkMisc.AutoSize = true;
             chkMisc.Cursor = Cursors.Hand;
             chkMisc.Font = new Font("Segoe UI", 9.75F, FontStyle.Bold);
-            chkMisc.Location = new Point(300, 62);
+            chkMisc.Location = new Point(300, 46);
             chkMisc.Margin = new Padding(4, 5, 4, 5);
             chkMisc.Name = "chkMisc";
             chkMisc.Size = new Size(127, 32);
@@ -299,11 +293,11 @@
             chkListMisc.CheckOnClick = true;
             chkListMisc.Font = new Font("Consolas", 11F);
             chkListMisc.FormattingEnabled = true;
-            chkListMisc.Location = new Point(9, 113);
+            chkListMisc.Location = new Point(9, 91);
             chkListMisc.Margin = new Padding(4, 5, 4, 5);
             chkListMisc.Name = "chkListMisc";
             chkListMisc.ScrollAlwaysVisible = true;
-            chkListMisc.Size = new Size(410, 214);
+            chkListMisc.Size = new Size(410, 154);
             chkListMisc.TabIndex = 38;
             chkListMisc.ItemCheck += chkListMisc_ItemCheck;
             // 
@@ -315,11 +309,11 @@
             groupBox4.Controls.Add(chkJm);
             groupBox4.Controls.Add(chkListJm);
             groupBox4.Font = new Font("Segoe UI", 12F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            groupBox4.Location = new Point(7, 425);
+            groupBox4.Location = new Point(7, 322);
             groupBox4.Margin = new Padding(7, 8, 7, 8);
             groupBox4.Name = "groupBox4";
             groupBox4.Padding = new Padding(4, 5, 4, 5);
-            groupBox4.Size = new Size(429, 400);
+            groupBox4.Size = new Size(429, 310);
             groupBox4.TabIndex = 42;
             groupBox4.TabStop = false;
             groupBox4.Text = "Junction Module";
@@ -329,7 +323,7 @@
             lblTotaljun.AutoSize = true;
             lblTotaljun.Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold | FontStyle.Italic, GraphicsUnit.Point, 0);
             lblTotaljun.ForeColor = Color.Blue;
-            lblTotaljun.Location = new Point(178, 358);
+            lblTotaljun.Location = new Point(178, 274);
             lblTotaljun.Name = "lblTotaljun";
             lblTotaljun.Size = new Size(215, 25);
             lblTotaljun.TabIndex = 45;
@@ -340,7 +334,7 @@
             lblJmCount.AutoSize = true;
             lblJmCount.Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold | FontStyle.Italic, GraphicsUnit.Point, 0);
             lblJmCount.ForeColor = Color.Blue;
-            lblJmCount.Location = new Point(197, 332);
+            lblJmCount.Location = new Point(197, 249);
             lblJmCount.Margin = new Padding(4, 0, 4, 0);
             lblJmCount.Name = "lblJmCount";
             lblJmCount.Size = new Size(197, 25);
@@ -351,7 +345,7 @@
             // 
             txtJmFilter.Font = new Font("Segoe UI", 12F, FontStyle.Italic);
             txtJmFilter.ForeColor = Color.Silver;
-            txtJmFilter.Location = new Point(9, 55);
+            txtJmFilter.Location = new Point(9, 40);
             txtJmFilter.Margin = new Padding(4, 5, 4, 5);
             txtJmFilter.Name = "txtJmFilter";
             txtJmFilter.Size = new Size(273, 39);
@@ -366,7 +360,7 @@
             chkJm.AutoSize = true;
             chkJm.Cursor = Cursors.Hand;
             chkJm.Font = new Font("Segoe UI", 9.75F, FontStyle.Bold);
-            chkJm.Location = new Point(300, 62);
+            chkJm.Location = new Point(300, 45);
             chkJm.Margin = new Padding(4, 5, 4, 5);
             chkJm.Name = "chkJm";
             chkJm.Size = new Size(127, 32);
@@ -380,14 +374,13 @@
             chkListJm.CheckOnClick = true;
             chkListJm.Font = new Font("Consolas", 11F);
             chkListJm.FormattingEnabled = true;
-            chkListJm.Location = new Point(9, 113);
+            chkListJm.Location = new Point(9, 90);
             chkListJm.Margin = new Padding(4, 5, 4, 5);
             chkListJm.Name = "chkListJm";
             chkListJm.ScrollAlwaysVisible = true;
-            chkListJm.Size = new Size(410, 214);
+            chkListJm.Size = new Size(410, 154);
             chkListJm.TabIndex = 38;
             chkListJm.ItemCheck += chkListJm_ItemCheck;
-            //chkListJm.SelectedIndexChanged += chkListJm_SelectedIndexChanged;
             // 
             // ComponentBreak
             // 
@@ -399,7 +392,7 @@
             Controls.Add(groupBox1);
             Margin = new Padding(4, 5, 4, 5);
             Name = "ComponentBreak";
-            Size = new Size(893, 833);
+            Size = new Size(893, 640);
             groupBox1.ResumeLayout(false);
             groupBox1.PerformLayout();
             groupBox2.ResumeLayout(false);

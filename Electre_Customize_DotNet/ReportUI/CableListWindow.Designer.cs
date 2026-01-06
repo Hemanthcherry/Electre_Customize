@@ -62,7 +62,7 @@ namespace Electre_Customize_DotNet.ReportUI
             groupBox3.Margin = new Padding(7, 8, 7, 8);
             groupBox3.Name = "groupBox3";
             groupBox3.Padding = new Padding(4, 5, 4, 5);
-            groupBox3.Size = new Size(429, 505);
+            groupBox3.Size = new Size(429, 407);
             groupBox3.TabIndex = 45;
             groupBox3.TabStop = false;
             groupBox3.Text = "Sheet";
@@ -72,7 +72,7 @@ namespace Electre_Customize_DotNet.ReportUI
             lbltotalsheet.AutoSize = true;
             lbltotalsheet.Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold | FontStyle.Italic, GraphicsUnit.Point, 0);
             lbltotalsheet.ForeColor = Color.Blue;
-            lbltotalsheet.Location = new Point(266, 464);
+            lbltotalsheet.Location = new Point(266, 362);
             lbltotalsheet.Name = "lbltotalsheet";
             lbltotalsheet.Size = new Size(130, 25);
             lbltotalsheet.TabIndex = 42;
@@ -83,7 +83,7 @@ namespace Electre_Customize_DotNet.ReportUI
             lblSheetCount.AutoSize = true;
             lblSheetCount.Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold | FontStyle.Italic, GraphicsUnit.Point, 0);
             lblSheetCount.ForeColor = Color.Blue;
-            lblSheetCount.Location = new Point(199, 439);
+            lblSheetCount.Location = new Point(199, 335);
             lblSheetCount.Margin = new Padding(4, 0, 4, 0);
             lblSheetCount.Name = "lblSheetCount";
             lblSheetCount.Size = new Size(197, 25);
@@ -127,7 +127,7 @@ namespace Electre_Customize_DotNet.ReportUI
             chkListSheet.Margin = new Padding(4, 5, 4, 5);
             chkListSheet.Name = "chkListSheet";
             chkListSheet.ScrollAlwaysVisible = true;
-            chkListSheet.Size = new Size(410, 310);
+            chkListSheet.Size = new Size(410, 208);
             chkListSheet.TabIndex = 38;
             chkListSheet.ItemCheck += chkListSheet_ItemCheck;
             // 
@@ -143,7 +143,7 @@ namespace Electre_Customize_DotNet.ReportUI
             groupBox4.Margin = new Padding(7, 8, 7, 8);
             groupBox4.Name = "groupBox4";
             groupBox4.Padding = new Padding(4, 5, 4, 5);
-            groupBox4.Size = new Size(429, 505);
+            groupBox4.Size = new Size(429, 407);
             groupBox4.TabIndex = 44;
             groupBox4.TabStop = false;
             groupBox4.Text = "Loom";
@@ -153,7 +153,7 @@ namespace Electre_Customize_DotNet.ReportUI
             lbltotalLoom.AutoSize = true;
             lbltotalLoom.Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold | FontStyle.Italic, GraphicsUnit.Point, 0);
             lbltotalLoom.ForeColor = Color.Blue;
-            lbltotalLoom.Location = new Point(271, 464);
+            lbltotalLoom.Location = new Point(271, 372);
             lbltotalLoom.Name = "lbltotalLoom";
             lbltotalLoom.Size = new Size(130, 25);
             lbltotalLoom.TabIndex = 42;
@@ -178,7 +178,7 @@ namespace Electre_Customize_DotNet.ReportUI
             lblLoomCount.AutoSize = true;
             lblLoomCount.Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold | FontStyle.Italic, GraphicsUnit.Point, 0);
             lblLoomCount.ForeColor = Color.Blue;
-            lblLoomCount.Location = new Point(205, 439);
+            lblLoomCount.Location = new Point(205, 342);
             lblLoomCount.Margin = new Padding(4, 0, 4, 0);
             lblLoomCount.Name = "lblLoomCount";
             lblLoomCount.Size = new Size(197, 25);
@@ -208,7 +208,7 @@ namespace Electre_Customize_DotNet.ReportUI
             chkListLoom.Margin = new Padding(4, 5, 4, 5);
             chkListLoom.Name = "chkListLoom";
             chkListLoom.ScrollAlwaysVisible = true;
-            chkListLoom.Size = new Size(410, 310);
+            chkListLoom.Size = new Size(410, 208);
             chkListLoom.TabIndex = 38;
             chkListLoom.ItemCheck += chkListLoom_ItemCheck;
             // 
@@ -242,6 +242,7 @@ namespace Electre_Customize_DotNet.ReportUI
             // button1
             // 
             button1.Font = new Font("Segoe UI", 16F, FontStyle.Bold, GraphicsUnit.Point, 0);
+            button1.ForeColor = Color.DeepSkyBlue;
             button1.Location = new Point(588, 65);
             button1.Name = "button1";
             button1.Size = new Size(265, 73);
@@ -260,7 +261,7 @@ namespace Electre_Customize_DotNet.ReportUI
             Controls.Add(groupBox4);
             Margin = new Padding(7, 8, 7, 8);
             Name = "CableListWindow";
-            Size = new Size(893, 833);
+            Size = new Size(893, 640);
             groupBox3.ResumeLayout(false);
             groupBox3.PerformLayout();
             groupBox4.ResumeLayout(false);

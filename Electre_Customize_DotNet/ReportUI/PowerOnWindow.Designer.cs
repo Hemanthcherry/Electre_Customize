@@ -29,12 +29,12 @@
         private void InitializeComponent()
         {
             groupBox4 = new GroupBox();
+            lblTotalPanel = new Label();
             lblPanelCount = new Label();
             txtPanelFilter = new TextBox();
             chkPanel = new CheckBox();
             chkListPanel = new CheckedListBox();
             chkProjSpec = new CheckBox();
-            lblTotalPanel = new Label();
             groupBox4.SuspendLayout();
             SuspendLayout();
             // 
@@ -46,26 +46,37 @@
             groupBox4.Controls.Add(chkPanel);
             groupBox4.Controls.Add(chkListPanel);
             groupBox4.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-            groupBox4.Location = new Point(197, 170);
+            groupBox4.Location = new Point(197, 129);
             groupBox4.Margin = new Padding(7, 8, 7, 8);
             groupBox4.Name = "groupBox4";
             groupBox4.Padding = new Padding(4, 5, 4, 5);
-            groupBox4.Size = new Size(429, 531);
+            groupBox4.Size = new Size(429, 445);
             groupBox4.TabIndex = 45;
             groupBox4.TabStop = false;
             groupBox4.Text = "Panel";
+            // 
+            // lblTotalPanel
+            // 
+            lblTotalPanel.AutoSize = true;
+            lblTotalPanel.Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold | FontStyle.Italic, GraphicsUnit.Point, 0);
+            lblTotalPanel.ForeColor = Color.Blue;
+            lblTotalPanel.Location = new Point(219, 411);
+            lblTotalPanel.Name = "lblTotalPanel";
+            lblTotalPanel.Size = new Size(130, 25);
+            lblTotalPanel.TabIndex = 42;
+            lblTotalPanel.Text = "Total Panels: 0";
             // 
             // lblPanelCount
             // 
             lblPanelCount.AutoSize = true;
             lblPanelCount.Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold | FontStyle.Italic, GraphicsUnit.Point, 0);
             lblPanelCount.ForeColor = Color.Blue;
-            lblPanelCount.Location = new Point(187, 458);
+            lblPanelCount.Location = new Point(223, 379);
             lblPanelCount.Margin = new Padding(4, 0, 4, 0);
             lblPanelCount.Name = "lblPanelCount";
-            lblPanelCount.Size = new Size(119, 25);
+            lblPanelCount.Size = new Size(189, 25);
             lblPanelCount.TabIndex = 40;
-            lblPanelCount.Text = "Item Count: 0";
+            lblPanelCount.Text = "Selected Item Count: 0";
             // 
             // txtPanelFilter
             // 
@@ -102,36 +113,24 @@
             chkListPanel.FormattingEnabled = true;
             chkListPanel.Location = new Point(9, 113);
             chkListPanel.Margin = new Padding(4, 5, 4, 5);
-            chkListPanel.MultiColumn = true;
             chkListPanel.Name = "chkListPanel";
-            chkListPanel.Size = new Size(410, 340);
+            chkListPanel.ScrollAlwaysVisible = true;
+            chkListPanel.Size = new Size(410, 256);
             chkListPanel.TabIndex = 38;
             chkListPanel.ItemCheck += chkListPanel_ItemCheck;
-           // chkListPanel.SelectedIndexChanged += chkListPanel_SelectedIndexChanged;
             // 
             // chkProjSpec
             // 
             chkProjSpec.AutoSize = true;
             chkProjSpec.Cursor = Cursors.Hand;
             chkProjSpec.Font = new Font("Segoe UI", 12F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            chkProjSpec.Location = new Point(197, 81);
+            chkProjSpec.Location = new Point(197, 40);
             chkProjSpec.Margin = new Padding(4, 5, 4, 5);
             chkProjSpec.Name = "chkProjSpec";
             chkProjSpec.Size = new Size(216, 36);
             chkProjSpec.TabIndex = 46;
             chkProjSpec.Text = "Project Specific";
             chkProjSpec.UseVisualStyleBackColor = true;
-            // 
-            // lblTotalPanel
-            // 
-            lblTotalPanel.AutoSize = true;
-            lblTotalPanel.Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold | FontStyle.Italic, GraphicsUnit.Point, 0);
-            lblTotalPanel.ForeColor = Color.Blue;
-            lblTotalPanel.Location = new Point(219, 493);
-            lblTotalPanel.Name = "lblTotalPanel";
-            lblTotalPanel.Size = new Size(130, 25);
-            lblTotalPanel.TabIndex = 42;
-            lblTotalPanel.Text = "Total Panels: 0";
             // 
             // PowerOnWindow
             // 
@@ -141,7 +140,7 @@
             Controls.Add(groupBox4);
             Margin = new Padding(7, 8, 7, 8);
             Name = "PowerOnWindow";
-            Size = new Size(893, 833);
+            Size = new Size(893, 640);
             groupBox4.ResumeLayout(false);
             groupBox4.PerformLayout();
             ResumeLayout(false);

@@ -45,11 +45,11 @@
             groupBox1.Controls.Add(chkLoom);
             groupBox1.Controls.Add(txtLoomFilter);
             groupBox1.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-            groupBox1.Location = new Point(215, 168);
+            groupBox1.Location = new Point(215, 64);
             groupBox1.Margin = new Padding(7, 8, 7, 8);
             groupBox1.Name = "groupBox1";
             groupBox1.Padding = new Padding(4, 5, 4, 5);
-            groupBox1.Size = new Size(429, 505);
+            groupBox1.Size = new Size(429, 468);
             groupBox1.TabIndex = 45;
             groupBox1.TabStop = false;
             groupBox1.Text = "Loom";
@@ -85,6 +85,7 @@
             chkListLoom.Location = new Point(7, 127);
             chkListLoom.Margin = new Padding(4, 5, 4, 5);
             chkListLoom.Name = "chkListLoom";
+            chkListLoom.ScrollAlwaysVisible = true;
             chkListLoom.Size = new Size(410, 276);
             chkListLoom.TabIndex = 38;
             chkListLoom.ItemCheck += checkedListLoom_ItemCheck;
@@ -124,8 +125,7 @@
             AutoScaleMode = AutoScaleMode.Font;
             Controls.Add(groupBox1);
             Name = "MeggerScheduler";
-            Size = new Size(893, 833);
-           // Load += MeggerScheduler_Load;
+            Size = new Size(893, 640);
             groupBox1.ResumeLayout(false);
             groupBox1.PerformLayout();
             ResumeLayout(false);

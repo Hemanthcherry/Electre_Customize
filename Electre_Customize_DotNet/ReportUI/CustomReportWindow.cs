@@ -30,6 +30,11 @@ namespace Electre_Customize_DotNet.ReportUI
         public PanelDrawingWindow _panelDrawingWindow;  // changed public from private for accessing the ChkListPanelText variable in modMain
         private PanelDrawingSchedulesWindow _panelDrawingSchedulesWindow;
 
+        private Button _activeMenuButton = null;
+        private readonly Color MenuDefaultBackColor = Color.CornflowerBlue;
+        private readonly Color MenuDefaultForeColor = Color.White;
+        private readonly Color MenuSelectedBackColor = Color.Orange;
+
         private modMain _modMain;
         public List<string> SelectedLoomList = new List<string>();
         public List<string> SelectedSheetList = new List<string>();
@@ -79,7 +84,7 @@ namespace Electre_Customize_DotNet.ReportUI
             SelectedLoomListPanelDwgMeg.Clear();
             SelectedSheetListPanelDwgPower.Clear();
 
-            lblTitle.Text = title;
+            //lblTitle.Text = title;
             panelMain.Controls.Add(userControl);
 
             // If the user control is cableListWindow, save the reference
@@ -327,38 +332,67 @@ namespace Electre_Customize_DotNet.ReportUI
 
         private void btnCable_Click(object sender, EventArgs e)
         {
+            SetActiveMenu(btnCable);
             LoadUserControl(CableListWindow.CableListWindowInst, ConfigurationManager.AppSettings["cableListTitle"]);
         }
 
         private void btnCompBrk_Click(object sender, EventArgs e)
         {
+            SetActiveMenu(btnCompBrk);
             LoadUserControl(ComponentBreak.ComponentBreakInst, ConfigurationManager.AppSettings["componetBreakTitle"]);
         }
 
         private void btnCont_Click(object sender, EventArgs e)
         {
+            SetActiveMenu(btnCont);
             LoadUserControl(ContinuityWindow.ContinuityWindowInst, ConfigurationManager.AppSettings["continuityTitle"]);
         }
         private void btnPowerOn_Click(object sender, EventArgs e)
         {
+            SetActiveMenu(btnPowerOn);
             LoadUserControl(PowerOnWindow.PowerOnWindowInst, ConfigurationManager.AppSettings["powerOnTitle"]);
         }
 
         private void btnMegger_Click(object sender, EventArgs e)
         {
+            SetActiveMenu(btnMegger);
             LoadUserControl(MeggerScheduler.MeggerSchedulerinst, ConfigurationManager.AppSettings["MeggerTitle"]);
         }
 
         private void btnPanel_Click(object sender, EventArgs e)
         {
+            SetActiveMenu(btnPanel);
             LoadUserControl(PanelDrawingWindow.PanelWindowInst, ConfigurationManager.AppSettings["panelDrawingTitle"]);
         }
 
         private void btnPanelSchedules_Click(object sender, EventArgs e)
         {
+            SetActiveMenu(btnpanelSchedules);
             LoadUserControl(PanelDrawingSchedulesWindow.PanelSchedulesWindowInst, ConfigurationManager.AppSettings["panelDwgSchedulesTitle"]);
         }
 
+        private void SetActiveMenu(Button selectedButton)
+        {
+            ResetAllMenuButtons();
+
+            selectedButton.BackColor = MenuSelectedBackColor;
+            selectedButton.ForeColor = MenuDefaultForeColor;
+           // selectedButton.FlatAppearance.BorderColor = Color.DarkOrange;
+
+            _activeMenuButton = selectedButton;
+        }
+
+        private void ResetAllMenuButtons()
+        {
+            foreach (Control ctrl in panelLeft.Controls)
+            {
+                if (ctrl is Button btn)
+                {
+                    btn.BackColor = MenuDefaultBackColor;
+                    btn.ForeColor = MenuDefaultForeColor;
+                }
+            }
+        }
 
         private async void btnOk_Click(object sender, EventArgs e)
         {
@@ -397,7 +431,7 @@ namespace Electre_Customize_DotNet.ReportUI
                 SelectedPanelListPanelDrawing = _panelDrawingWindow.SelectedPanelListPanelDrawing;
             }
 
-            if(_panelDrawingSchedulesWindow != null)
+            if (_panelDrawingSchedulesWindow != null)
             {
                 SelectedLoomListPanelDwgCL = _panelDrawingSchedulesWindow.SelectedLoomListCL;
                 SelectedSheetListPanelDwgCL = _panelDrawingSchedulesWindow.SelectedSheetListCL;
@@ -539,7 +573,6 @@ namespace Electre_Customize_DotNet.ReportUI
         {
             ClearAllTextBoxes(parentControl);
             ClearAllCheckboxes(parentControl);
-
         }
 
         private void ClearAllTextBoxes(Control parentcontrol)
@@ -548,7 +581,8 @@ namespace Electre_Customize_DotNet.ReportUI
             {
                 if (control is TextBox textbox)
                 {
-                    textbox.Clear();
+                    textbox.Text = "Search Filter";
+                    //textbox.Clear();
                 }
                 else if (control.HasChildren)
                 {
@@ -575,6 +609,7 @@ namespace Electre_Customize_DotNet.ReportUI
                     {
                         checkedListBox.SetItemChecked(i, false);
                     }
+                    checkedListBox.ClearSelected(); // removes blue highlight
                     checkedListBox.EndUpdate();
                 }
                 else if (control.HasChildren)
@@ -679,5 +714,6 @@ namespace Electre_Customize_DotNet.ReportUI
                 }
             }
         }
+
     }
 }
