@@ -5,83 +5,212 @@ namespace Electre_Customize_DotNet
 {
     public partial class LoadingForm : Form
     {
+
+        //old commented on Jan,06,2025
+
+        //public string LbsLoadinMessag
+        //{
+        //    get
+        //    { return lableLoadMessage.Text; }
+
+        //    set
+        //    {
+        //        if (string.IsNullOrEmpty(lableLoadMessage.Text))
+        //        {
+        //            lableLoadMessage.Text = value;
+        //        }
+
+        //        else
+        //        {
+        //            lableLoadMessage.Text = $"{lableLoadMessage.Text}\n" + value;
+        //        }
+        //    }
+        //}
+
         public string LbsLoadinMessag
         {
             get
-            { return lableLoadMessage.Text; }
+            {
+                if (lableLoadMessage.InvokeRequired)
+                    return (string)lableLoadMessage.Invoke(
+                        new Func<string>(() => lableLoadMessage.Text));
 
+                return lableLoadMessage.Text;
+            }
             set
             {
+                if (lableLoadMessage.InvokeRequired)
+                {
+                    lableLoadMessage.Invoke(new Action(() => LbsLoadinMessag = value));
+                    return;
+                }
+
                 if (string.IsNullOrEmpty(lableLoadMessage.Text))
                 {
                     lableLoadMessage.Text = value;
                 }
-
                 else
                 {
-                    lableLoadMessage.Text = $"{lableLoadMessage.Text}\n" + value;
+                    lableLoadMessage.Text += Environment.NewLine + value;
                 }
             }
         }
+
+        //old commented on Jan,06,2025
+        //public string CompletionMessage
+        //{
+        //    get
+        //    { return lableLoadMessage.Text; }
+
+        //    set
+        //    {
+        //        if (string.IsNullOrEmpty(completionlbl.Text))
+        //        {
+        //            completionlbl.Text = value;
+        //        }
+
+        //        else
+        //        {
+        //            completionlbl.Text = value;
+        //        }
+        //    }
+        //}
 
         public string CompletionMessage
         {
             get
-            { return lableLoadMessage.Text; }
+            {
+                if (completionlbl.InvokeRequired)
+                    return (string)completionlbl.Invoke(
+                        new Func<string>(() => completionlbl.Text));
 
+                return completionlbl.Text;
+            }
             set
             {
-                if (string.IsNullOrEmpty(completionlbl.Text))
+                if (completionlbl.InvokeRequired)
                 {
-                    completionlbl.Text = value;
+                    completionlbl.Invoke(new Action(() => CompletionMessage = value));
+                    return;
                 }
 
-                else
-                {
-                    completionlbl.Text = value;
-                }
+                completionlbl.Text = value;
             }
         }
 
+
         public string Loadingbtn
         {
-            get { return loadingbtn.Text; }
+            get
+            {
+                if (loadingbtn.InvokeRequired)
+                    return (string)loadingbtn.Invoke(new Func<string>(() => loadingbtn.Text));
 
+                return loadingbtn.Text;
+            }
             set
             {
-
-                if (value.ToLower() == "wait")
+                if (loadingbtn.InvokeRequired)
                 {
-                    loadingbtn.Text = value;
-                    loadingbtn.BackColor = Color.Yellow;
+                    loadingbtn.Invoke(new Action(() => Loadingbtn = value));
+                    return;
                 }
 
+                loadingbtn.Text = value;
+
+                if (value.Equals("wait", StringComparison.OrdinalIgnoreCase))
+                {
+                    loadingbtn.BackColor = Color.Yellow;
+                }
                 else
                 {
-                    loadingbtn.Text = value;
                     loadingbtn.BackColor = Color.GreenYellow;
                 }
             }
         }
 
+        //old commented on Jan,06,2025
+        //public string Loadingbtn
+        //{
+        //    get { return loadingbtn.Text; }
+
+        //    set
+        //    {
+        //        if (value.ToLower() == "wait")
+        //        {
+        //            loadingbtn.Text = value;
+        //            loadingbtn.BackColor = Color.Yellow;
+        //        }
+
+        //        else
+        //        {
+        //            loadingbtn.Text = value;
+        //            loadingbtn.BackColor = Color.GreenYellow;
+        //        }
+        //    }
+        //}
+
         public bool LoadingbtnEnable
         {
-            get { return loadingbtn.Enabled; }
-            set { loadingbtn.Enabled = value; }
+            get
+            {
+                if (loadingbtn.InvokeRequired)
+                    return (bool)loadingbtn.Invoke(new Func<bool>(() => loadingbtn.Enabled));
+
+                return loadingbtn.Enabled;
+            }
+            set
+            {
+                if (loadingbtn.InvokeRequired)
+                {
+                    loadingbtn.Invoke(new Action(() => LoadingbtnEnable = value));
+                    return;
+                }
+
+                loadingbtn.Enabled = value;
+            }
         }
+
+        //old commented on Jan,06,2025
+        //public bool LoadingbtnEnable
+        //{
+        //    get { return loadingbtn.Enabled; }
+        //    set { loadingbtn.Enabled = value; }
+        //}
 
         public string ReportLoclbl
         {
-            get { return reportLoclbl.ToString(); }
+            get
+            {
+                if (reportLoclbl.InvokeRequired)
+                    return (string)reportLoclbl.Invoke(
+                        new Func<string>(() => reportLoclbl.Text));
+
+                return reportLoclbl.Text;
+            }
             set
             {
+                if (reportLoclbl.InvokeRequired)
+                {
+                    reportLoclbl.Invoke(new Action(() => ReportLoclbl = value));
+                    return;
+                }
+
                 reportLocLinklbl.Show();
                 reportLoclbl.Text = value;
             }
         }
 
-
-
+        //old commented on Jan,06,2025
+        //public string ReportLoclbl
+        //{
+        //    get { return reportLoclbl.ToString(); }
+        //    set
+        //    {
+        //        reportLocLinklbl.Show();
+        //        reportLoclbl.Text = value;
+        //    }
+        //}
 
         public LoadingForm()
         {
@@ -93,12 +222,6 @@ namespace Electre_Customize_DotNet
             lableLoadMessage.Text = "";
             this.Close();
         }
-
-      
-
-
-
-
 
         private void LoadingForm_Load(object sender, EventArgs e)
         {
@@ -125,11 +248,5 @@ namespace Electre_Customize_DotNet
                 }
             }
         }
-
-
-
-
-
-
     }
 }
