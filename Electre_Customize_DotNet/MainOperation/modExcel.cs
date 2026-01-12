@@ -3611,7 +3611,7 @@ namespace Electre_Customize_DotNet.MainOperation
                 .ToList();
 
                 foreach (var obj in panelDetails)
-                {
+                {   
                     var sourceCon = obj.ConnectorName;
                     var sourcePin = obj.PinNumber;
                     var destinationObj = modMain.ElecCollection_All.Where(e => e.WireNumber == obj.WireNumber

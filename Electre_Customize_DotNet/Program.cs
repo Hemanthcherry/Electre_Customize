@@ -25,7 +25,7 @@ namespace Electre_Customize_DotNet
                 if (args.Length > 0)
                     GlobalVar.StrtCmd = args[0];
 
-                GlobalVar.StrtCmd = "C:\\ELECTRE\\ELECTRE_PROJECTS\\PANEL_DRAWING\\";
+               // GlobalVar.StrtCmd = "C:\\ELECTRE\\ELECTRE_PROJECTS\\PANEL_DRAWING\\";
                 Logging.Info($"Report extraction started from path {GlobalVar.StrtCmd}");
 
                 GlobalVar.TempFolderGlobal = Path.Combine(GlobalVar.StrtCmd, ConfigurationManager.AppSettings["TempFolder"]);
