@@ -139,6 +139,9 @@ namespace Electre_Customize_DotNet.MainOperation
                 selectAllCheckbox.CheckState = CheckState.Unchecked;
             else
                 selectAllCheckbox.CheckState = CheckState.Indeterminate;
+
+            chkList.ClearSelected(); // removes blue highlight
+
         }
 
         public void ListItemCheckedPanelDwg(ItemCheckEventArgs e, HashSet<string> checkedItem, CheckedListBox chkList, CheckBox selectAllCheckbox)
@@ -157,6 +160,8 @@ namespace Electre_Customize_DotNet.MainOperation
                 selectAllCheckbox.CheckState = CheckState.Unchecked;
             else
                 selectAllCheckbox.CheckState = CheckState.Indeterminate;
+
+            chkList.ClearSelected(); // removes blue highlight
         }
 
         // commented on July 10th before implementing flickering issue.

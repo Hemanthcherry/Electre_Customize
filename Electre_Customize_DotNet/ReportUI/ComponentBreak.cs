@@ -26,9 +26,8 @@ namespace Electre_Customize_DotNet.ReportUI
         public int Totalmisc = modMain.arrListOfSWT.Count() + modMain.arrListOfREL.Count();
 
         //singletone initialization
-        #region singletone
         private static ComponentBreak? _componentBreakInst;
-        private static object lockObjet = new object();
+        private static object lockObject = new object();
 
         public static ComponentBreak ComponentBreakInst
         {
@@ -36,7 +35,7 @@ namespace Electre_Customize_DotNet.ReportUI
             {
                 if (_componentBreakInst == null)
                 {
-                    lock (lockObjet)
+                    lock (lockObject)
                     {
                         if (_componentBreakInst == null)
                         {
@@ -47,7 +46,6 @@ namespace Electre_Customize_DotNet.ReportUI
                 return _componentBreakInst;
             }
         }
-        #endregion
 
         private ISelectionFunctions _selectionFunctions;
 
@@ -101,6 +99,7 @@ namespace Electre_Customize_DotNet.ReportUI
             lblTotalBreckcon.Text = "Total Break Connectors: " + TotalBreakconnectors.ToString();
             lblTotaljun.Text = "Total junction Modules: " + Totaljunctionandsplice.ToString();
             lblTotalmis.Text = "Total misc: " + Totalmisc.ToString();
+
         }
 
         #region Equipment

@@ -530,59 +530,59 @@ namespace Electre_Customize_DotNet.Reports
             return elecollection.Where(e => selectedLoom.Contains(e.BundleName)).ToList();
         }
 
-        public bool IfExist(string istr, List<string> iarr)
-        {
-            for (int i = 0; i < iarr.Count; i++)
-            {
-                if (iarr[i] == istr)
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
+        //public bool IfExist(string istr, List<string> iarr)
+        //{
+        //    for (int i = 0; i < iarr.Count; i++)
+        //    {
+        //        if (iarr[i] == istr)
+        //        {
+        //            return true;
+        //        }
+        //    }
+        //    return false;
+        //}
 
         // Helper methods
-        bool FoundInList(string item, List<string> list)
-        {
-            return list.Contains(item);
-        }
+        //bool FoundInList(string item, List<string> list)
+        //{
+        //    return list.Contains(item);
+        //}
 
-        int PinSortKey(string pin)
-        {
-            // If numeric, return integer value
-            if (int.TryParse(pin, out int num))
-                return num;
+        //int PinSortKey(string pin)
+        //{
+        //    // If numeric, return integer value
+        //    if (int.TryParse(pin, out int num))
+        //        return num;
 
-            // If alphabetical, convert to base-26 integer (like Excel columns: A=1, B=2, ..., AA=27)
-            int value = 0;
-            foreach (char c in pin.ToUpper())
-            {
-                if (char.IsLetter(c))
-                {
-                    value = value * 26 + (c - 'A' + 1);
-                }
-                else
-                {
-                    // Fallback for unexpected format
-                    return int.MaxValue;
-                }
-            }
-            return value;
-        }
+        //    // If alphabetical, convert to base-26 integer (like Excel columns: A=1, B=2, ..., AA=27)
+        //    int value = 0;
+        //    foreach (char c in pin.ToUpper())
+        //    {
+        //        if (char.IsLetter(c))
+        //        {
+        //            value = value * 26 + (c - 'A' + 1);
+        //        }
+        //        else
+        //        {
+        //            // Fallback for unexpected format
+        //            return int.MaxValue;
+        //        }
+        //    }
+        //    return value;
+        //}
 
         // Helper functions and variables
 
         // Function to check if the ComponentType is valid
-        bool IsValidComponentType(string componentType)
-        {
-            var validTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-            {
-            "EQU", "REL", "SWT", "ERM", "IND", "SCB", "TCB", "TER",
-            "FUS", "POT", "LMP", "ANT", "BUS", "MSW","DIS"
-            };
-            return validTypes.Contains(componentType);
-        }
+        //bool IsValidComponentType(string componentType)
+        //{
+        //    var validTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        //    {
+        //    "EQU", "REL", "SWT", "ERM", "IND", "SCB", "TCB", "TER",
+        //    "FUS", "POT", "LMP", "ANT", "BUS", "MSW","DIS"
+        //    };
+        //    return validTypes.Contains(componentType);
+        //}
 
         // removing duplicate connections and destinations for continuity
         public string[,] removeRedundants(string[,] arrFTcwob)
