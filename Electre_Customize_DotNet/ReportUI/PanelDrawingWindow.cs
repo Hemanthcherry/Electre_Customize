@@ -64,12 +64,37 @@ namespace Electre_Customize_DotNet.ReportUI
             }
         }
 
+        //public string ChkListPanelText
+        //{
+        //    get { return chkListPanel.Text; }
+        //    set { chkListPanel.Text = value; }
+        //}
+
         public string ChkListPanelText
         {
-            get { return chkListPanel.Text; }
-            set { chkListPanel.Text = value; }
+            get
+            {
+                if(chkListPanel.InvokeRequired)
+                {
+                    return (string)chkListPanel.Invoke(new Func<string>(() => chkListPanel.Text));
+                }
+                else
+                {
+                    return chkListPanel.Text;
+                }
+            }
+            set
+            {
+                if (chkListPanel.InvokeRequired)
+                {
+                    chkListPanel.Invoke(new System.Action(() => chkListPanel.Text = value));
+                }
+                else
+                {
+                    chkListPanel.Text = value;
+                }
+            }
         }
-
         private PanelDrawingWindow()
         {
             InitializeComponent();

@@ -254,7 +254,7 @@ namespace Electre_Customize_DotNet.MainOperation
                 }
 
                 Logging.Info("Electre object List created");
-                ElecCollection = ElecCollection.OrderBy(E => E.EquipmentName).ThenBy(e => e.PinNumber).ToList();                
+                ElecCollection = ElecCollection.OrderBy(E => E.ConnectorName).ThenBy(e => e.PinNumber).ToList();                
 
                 #region //Duplicate wire code commented on Dec 26, 2025
                 /* List<WireListCount> wireListCountList1 = ElecCollection
@@ -1972,19 +1972,20 @@ namespace Electre_Customize_DotNet.MainOperation
                                     arrCustomLoom[Z, X] = arrFT_CwithBCProject[Y, X];
                                 }
                                 arrCustomLoom[Z, 9] = arrFT_CwithBCProject[Y, 12];
+                                arrCustomLoom[Z, 12] = arrFT_CwithBCProject[Y, 12];
 
                                 // Swap values as in the VBA code
-                                string tempFromConnector = arrCustomLoom[Z, 0]?.ToString();
-                                string tempFromPin = arrCustomLoom[Z, 1]?.ToString();
+                                //string tempFromConnector = arrCustomLoom[Z, 0]?.ToString();
+                                //string tempFromPin = arrCustomLoom[Z, 1]?.ToString();
 
-                                arrCustomLoom[Z, 0] = arrCustomLoom[Z, 2];  // Swap position 1 with 3
-                                arrCustomLoom[Z, 1] = arrCustomLoom[Z, 3];  // Swap position 2 with 4
-                                arrCustomLoom[Z, 2] = tempFromConnector;
-                                arrCustomLoom[Z, 3] = tempFromPin;
+                                //arrCustomLoom[Z, 0] = arrCustomLoom[Z, 2];  // Swap position 1 with 3
+                                //arrCustomLoom[Z, 1] = arrCustomLoom[Z, 3];  // Swap position 2 with 4
+                                //arrCustomLoom[Z, 2] = tempFromConnector;
+                                //arrCustomLoom[Z, 3] = tempFromPin;
 
-                                // Set specific columns with values from arrFT_CwithBCProject
-                                arrCustomLoom[Z, 7] = arrFT_CwithBCProject[Y, 9];
-                                arrCustomLoom[Z, 8] = arrFT_CwithBCProject[Y, 10];
+                                //// Set specific columns with values from arrFT_CwithBCProject
+                                //arrCustomLoom[Z, 7] = arrFT_CwithBCProject[Y, 9];
+                                //arrCustomLoom[Z, 8] = arrFT_CwithBCProject[Y, 10];
                                 arrCustomLoom[Z, 13] = arrFT_CwithBCProject[Y, 13];
 
                                 Z++;

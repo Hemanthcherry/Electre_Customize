@@ -13,7 +13,7 @@ namespace Electre_Customize_DotNet.MainOperation
         public static void DuplicateWires()
         {
             // Finding duplicate wires in the project
-            List<WireListCount> wireListCountList = modMain.ElecCollection
+            List<WireListCount> wireListCountList = modMain.ElecCollection_All
             .Where(obj => !string.Equals(obj.PinNumber, "SHLD", StringComparison.OrdinalIgnoreCase))
             .GroupBy(p => new { p.WireNumber, p.Core_Part_Number })
             .Where(g => g.Count() > 2)
@@ -26,7 +26,7 @@ namespace Electre_Customize_DotNet.MainOperation
             .ToList();
 
             var monoWireSet = new HashSet<string>(
-                modMain.ElecCollection
+                modMain.ElecCollection_All
                 .Where(e => string.IsNullOrEmpty(e.Core_Part_Number))
                 .Select(e => e.WireNumber),
                 StringComparer.OrdinalIgnoreCase
@@ -37,8 +37,8 @@ namespace Electre_Customize_DotNet.MainOperation
             //                 && monoWireSet.Contains(w.WireNumber)) 
             //        .ToList();
 
-            var monoPairConflicts = modMain.ElecCollection
-                .Where(w => !string.IsNullOrEmpty(w.Core_Part_Number) && monoWireSet.Contains(w.WireNumber))
+            var monoPairConflicts = modMain.ElecCollection_All
+                .Where(w => !string.IsNullOrEmpty(w.Core_Part_Number) && w.Core_Part_Number.Length <=2 && !string.Equals(w.Core_Part_Number, "PN", StringComparison.OrdinalIgnoreCase) && monoWireSet.Contains(w.WireNumber))
                 .GroupBy(w => new { w.WireNumber, w.Core_Part_Number })
                 .Select(g => new
                 {
@@ -81,7 +81,7 @@ namespace Electre_Customize_DotNet.MainOperation
                 );
 
 
-                foreach (ElectreObject elec in modMain.ElecCollection)
+                foreach (ElectreObject elec in modMain.ElecCollection_All)
                 {
                     var key = (elec.WireNumber.ToLower(), elec.Core_Part_Number?.ToLower() ?? string.Empty);
 
