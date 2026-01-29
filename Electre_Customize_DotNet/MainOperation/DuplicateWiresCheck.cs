@@ -27,7 +27,7 @@ namespace Electre_Customize_DotNet.MainOperation
 
             var monoWireSet = new HashSet<string>(
                 modMain.ElecCollection_All
-                .Where(e => string.IsNullOrEmpty(e.Core_Part_Number))
+                .Where(e => string.IsNullOrEmpty(e.Core_Part_Number) || e.Core_Part_Number.Length > 2 || string.Equals(e.Core_Part_Number, "PN", StringComparison.OrdinalIgnoreCase))
                 .Select(e => e.WireNumber),
                 StringComparer.OrdinalIgnoreCase
             );
