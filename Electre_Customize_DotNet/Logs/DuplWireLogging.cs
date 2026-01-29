@@ -11,17 +11,17 @@ namespace Electre_Customize_DotNet.Logs
 
     public static class DuplWireLogging
     {
-        public static string logpath;
+        //public static string logpath;
         private static readonly string LogFolder = Path.Combine(GlobalVar.StrtCmd, "Logs");
 
-        static DuplWireLogging()
-        {
-            // Ensure the Logs directory exists
-            if (!Directory.Exists(LogFolder))
-            {
-                Directory.CreateDirectory(LogFolder);
-            }
-        }
+        //static DuplWireLogging()
+        //{
+        //    // Ensure the Logs directory exists
+        //    if (!Directory.Exists(LogFolder))
+        //    {
+        //        Directory.CreateDirectory(LogFolder);
+        //    }
+        //}
 
         private static string GetLogFilePath()
         {

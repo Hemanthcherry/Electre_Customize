@@ -3609,7 +3609,7 @@ namespace Electre_Customize_DotNet.MainOperation
                 List<ElectreObject> panelDetails = modMain.ElecCollection_All
                 .Where(e => e.Panel == ChkListPanelText)
                 .ToList();
-
+                int missingDestCount = 0;
                 foreach (var obj in panelDetails)
                 {   
                     var sourceCon = obj.ConnectorName;
@@ -3621,18 +3621,39 @@ namespace Electre_Customize_DotNet.MainOperation
                                                               .FirstOrDefault();
                     var destCon = string.Empty;
                     var destPin = string.Empty;
+
                     if (destinationObj != null)
                     {
                         destCon = destinationObj.ConnectorName;
-                        destPin = destinationObj.PinNumber;
+                        destPin = destinationObj.PinNumber;                        
                     }
-                    string core = !string.IsNullOrEmpty(obj.Core_Part_Number) && obj.Core_Part_Number.Length <= 2 
-                        ? "/" + obj.Core_Part_Number
-                        : string.Empty;
+                    else
+                    {
+                        missingDestCount++;
+                        Logging.Warning_PD($"No destination found for wire '{obj.WireNumber}' from '{sourceCon}' pin '{sourcePin}'");
+                    }
+
+                    string core = !string.IsNullOrEmpty(obj.Core_Part_Number) && obj.Core_Part_Number.Length <= 2
+                            ? "/" + obj.Core_Part_Number
+                            : string.Empty;
+
 
                     writer.WriteLine($"{sourceCon},{sourcePin},{destCon},{destPin},{obj.WireNumber}/{obj.Gauge.Replace("#", "")}{core}");
 
-                   // writer.WriteLine($"{sourceCon},{sourcePin},{destCon},{destPin},{obj.WireNumber}/{obj.Gauge.Replace("#", "")}/{obj.Core_Part_Number}");
+                    // writer.WriteLine($"{sourceCon},{sourcePin},{destCon},{destPin},{obj.WireNumber}/{obj.Gauge.Replace("#", "")}/{obj.Core_Part_Number}");
+
+                }
+
+                if(missingDestCount > 0)
+                {
+                    MessageBox.Show(
+                        $"Missing destinations detected for panel '{ChkListPanelText}'.\n\n" +
+                        $"Missing count: {missingDestCount}\n\n" +
+                        $"Please check the log file for detailed information.",
+                        "Missing Destinations",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning
+                    );
 
                 }
             }

@@ -416,8 +416,8 @@ namespace Electre_Customize_DotNet.MainOperation
                 arrListOfDIS = arrListOfDIS.OrderBy(x => x).ToList();
                 arrListOfSWT = arrListOfSWT.OrderBy(x => x).ToList();
 
-                Reading_And_StoringData_In2DArray();
-                Removing_DuplicateWires_In2DArray();
+                //Reading_And_StoringData_In2DArray();
+                //Removing_DuplicateWires_In2DArray();
             }
 
             //catch (DuplicatWireException ex)
@@ -439,7 +439,6 @@ namespace Electre_Customize_DotNet.MainOperation
             {
                 arrListOfPANEL.Clear();
                 // Variable declarations
-                bool bDel;
                 ElectreObjs = new ElectreObject[1];
                 int ObjCount = 0;
                 string[] arrTemp;
@@ -667,8 +666,9 @@ namespace Electre_Customize_DotNet.MainOperation
                 arrListOfComponentsInPANEL = new object[arrListOfComponents.Count, 4];
 
                 arrListOfPANEL = arrListOfPANEL.OrderBy(x => x).ToList();
-                // Removing_DuplicateWires_In2DArray();
-                // Reading_And_StoringData_In2DArray();
+
+                Reading_And_StoringData_In2DArray();
+                Removing_DuplicateWires_In2DArray();
             }
 
             //catch (DuplicatWireException ex)
