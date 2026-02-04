@@ -369,18 +369,25 @@ namespace Electre_Customize_DotNet.ReportUI
 
         private void linkLabel1_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
         {
-            string wordDocumentPath = ConfigurationManager.AppSettings["panelExtractionDocumentPath"];
+            string customizeFolder = Environment.GetEnvironmentVariable("ELECTRE_CUSTOMIZE");
 
-            if (!string.IsNullOrEmpty(wordDocumentPath))
+            string docFilePath = Path.Combine(customizeFolder, "PanelExtractionSteps.docx");
+
+            if (!File.Exists(docFilePath))
             {
-                OpenWordDocument(wordDocumentPath);
+                MessageBox.Show(
+                    $"Document not found in the following path:\n{docFilePath}",
+                    "Panel Drawing",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+
+                Logging.Warning($"Document not found in the following path: {docFilePath}");
+                return;
             }
-            else
-            {
-                MessageBox.Show($"Document not found in the following path : {wordDocumentPath}");
-                Logging.Warning($"Document not found in the following path : {wordDocumentPath}");
-            }
+
+            OpenWordDocument(docFilePath);
         }
+
 
         private void OpenWordDocument(string filePath)
         {
