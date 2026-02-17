@@ -1025,8 +1025,8 @@ namespace Electre_Customize_DotNet.MainOperation
                         string fullPath = Path.Combine(templpath, wireListLoomFolder);
                         string fullPathBundle = Path.Combine(templpath, wireListBundleFolder);
 
-                        DeleteExistingFiles(fullPath);
-                        DeleteExistingFiles(fullPathBundle);
+                        //DeleteExistingFiles(fullPath);
+                        //DeleteExistingFiles(fullPathBundle);
 
                         Incorrect_cable_group_IDs.DeletePreviousLogs();
                         Null_Group_IDs.DeletePreviousLogs();
@@ -1043,7 +1043,7 @@ namespace Electre_Customize_DotNet.MainOperation
                     if (_customReportWindow.SelectedSheetList.Count > 0)
                     {
                         string fullPath = Path.Combine(templpath, wireListSheetFolder);
-                        DeleteExistingFiles(fullPath);
+                       // DeleteExistingFiles(fullPath);
 
                         sheetsReportWireList(modExcelInst, _customReportWindow.SelectedSheetList, wireListSheetFolder);
 
@@ -1058,7 +1058,7 @@ namespace Electre_Customize_DotNet.MainOperation
                     if (_customReportWindow.SelectedEqupList.Count > 0)
                     {
                         string fullPath = Path.Combine(templpath, EquipmentFolder);
-                        DeleteExistingFiles(fullPath);
+                        //DeleteExistingFiles(fullPath);
 
                         equipmentReportWireList(modExcelInst, "COMP_WireList", ConfigurationManager.AppSettings["EquipmentFolder"], _customReportWindow.SelectedEqupList);
 
@@ -1072,7 +1072,7 @@ namespace Electre_Customize_DotNet.MainOperation
                     if (_customReportWindow.SelectedBrkList.Count > 0)
                     {
                         string fullPath = Path.Combine(templpath, BrkFolder);
-                        DeleteExistingFiles(fullPath);
+                        //DeleteExistingFiles(fullPath);
 
                         equipmentReportWireList(modExcelInst, "BRK_WireList", ConfigurationManager.AppSettings["BrkFolder"], _customReportWindow.SelectedBrkList);
 
@@ -1086,7 +1086,7 @@ namespace Electre_Customize_DotNet.MainOperation
                     if (_customReportWindow.SelectedJmList.Count > 0)
                     {
                         string fullPath = Path.Combine(templpath, JmFolder);
-                        DeleteExistingFiles(fullPath);
+                        //DeleteExistingFiles(fullPath);
 
                         equipmentReportWireList(modExcelInst, "JM_WireList", ConfigurationManager.AppSettings["JmFolder"], _customReportWindow.SelectedJmList);
 
@@ -1100,7 +1100,7 @@ namespace Electre_Customize_DotNet.MainOperation
                     if (_customReportWindow.SelectedMiscList.Count > 0)
                     {
                         string fullPath = Path.Combine(templpath, MiscFolder);
-                        DeleteExistingFiles(fullPath);
+                        //DeleteExistingFiles(fullPath);
 
                         equipmentReportWireList(modExcelInst, "MISC_WireList", ConfigurationManager.AppSettings["MiscFolder"], _customReportWindow.SelectedMiscList);
 
@@ -1257,8 +1257,8 @@ namespace Electre_Customize_DotNet.MainOperation
                         string fullPath = Path.Combine(templpath, PanelLoomFolderCL);
                         string fullPathBundle = Path.Combine(templpath, PanelLoomFolderBundleCL);
 
-                        DeleteExistingFiles(fullPath);
-                        DeleteExistingFiles(fullPathBundle);
+                        //DeleteExistingFiles(fullPath);
+                        //DeleteExistingFiles(fullPathBundle);
 
                         Incorrect_cable_group_IDs.DeletePreviousLogs();
                         Null_Group_IDs.DeletePreviousLogs();
@@ -1275,7 +1275,7 @@ namespace Electre_Customize_DotNet.MainOperation
                     if (_customReportWindow.SelectedSheetListPanelDwgCL.Count > 0)
                     {
                         string fullPath = Path.Combine(templpath, PanelSheetFolderCL);
-                        DeleteExistingFiles(fullPath);
+                        //DeleteExistingFiles(fullPath);
 
                         sheetsReportWireList(modExcelInst, _customReportWindow.SelectedSheetListPanelDwgCL, PanelSheetFolderCL);
 
