@@ -43,9 +43,11 @@
             groupBox1.Controls.Add(chkListPanel);
             groupBox1.Controls.Add(btnProceed);
             groupBox1.Font = new Font("Segoe UI", 10F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            groupBox1.Location = new Point(210, 112);
+            groupBox1.Location = new Point(168, 90);
+            groupBox1.Margin = new Padding(2, 2, 2, 2);
             groupBox1.Name = "groupBox1";
-            groupBox1.Size = new Size(485, 363);
+            groupBox1.Padding = new Padding(2, 2, 2, 2);
+            groupBox1.Size = new Size(388, 290);
             groupBox1.TabIndex = 5;
             groupBox1.TabStop = false;
             groupBox1.Text = "Panels";
@@ -55,10 +57,9 @@
             lblPanelCount.AutoSize = true;
             lblPanelCount.Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold | FontStyle.Italic, GraphicsUnit.Point, 0);
             lblPanelCount.ForeColor = Color.Blue;
-            lblPanelCount.Location = new Point(51, 306);
-            lblPanelCount.Margin = new Padding(4, 0, 4, 0);
+            lblPanelCount.Location = new Point(41, 245);
             lblPanelCount.Name = "lblPanelCount";
-            lblPanelCount.Size = new Size(189, 25);
+            lblPanelCount.Size = new Size(162, 20);
             lblPanelCount.TabIndex = 41;
             lblPanelCount.Text = "Selected Item Count: 0";
             lblPanelCount.Visible = false;
@@ -68,19 +69,21 @@
             chkListPanel.CheckOnClick = true;
             chkListPanel.Font = new Font("Segoe UI", 10F, FontStyle.Regular, GraphicsUnit.Point, 0);
             chkListPanel.FormattingEnabled = true;
-            chkListPanel.Location = new Point(12, 47);
+            chkListPanel.Location = new Point(10, 38);
+            chkListPanel.Margin = new Padding(2, 2, 2, 2);
             chkListPanel.Name = "chkListPanel";
             chkListPanel.ScrollAlwaysVisible = true;
-            chkListPanel.Size = new Size(450, 252);
+            chkListPanel.Size = new Size(361, 179);
             chkListPanel.TabIndex = 1;
             chkListPanel.ItemCheck += chkListPanel_ItemCheck;
             // 
             // btnProceed
             // 
             btnProceed.BackColor = SystemColors.GradientActiveCaption;
-            btnProceed.Location = new Point(316, 312);
+            btnProceed.Location = new Point(253, 250);
+            btnProceed.Margin = new Padding(2, 2, 2, 2);
             btnProceed.Name = "btnProceed";
-            btnProceed.Size = new Size(125, 42);
+            btnProceed.Size = new Size(100, 34);
             btnProceed.TabIndex = 0;
             btnProceed.Text = "Proceed";
             btnProceed.UseVisualStyleBackColor = false;
@@ -88,19 +91,21 @@
             // 
             // txtPanelDigit
             // 
-            txtPanelDigit.Location = new Point(467, 482);
+            txtPanelDigit.Location = new Point(374, 386);
+            txtPanelDigit.Margin = new Padding(2, 2, 2, 2);
             txtPanelDigit.Name = "txtPanelDigit";
             txtPanelDigit.PlaceholderText = "PanelDigit";
-            txtPanelDigit.Size = new Size(150, 31);
+            txtPanelDigit.Size = new Size(180, 27);
             txtPanelDigit.TabIndex = 29;
             // 
             // panelExtractionDoc
             // 
             panelExtractionDoc.AutoSize = true;
             panelExtractionDoc.Font = new Font("Segoe UI", 11F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            panelExtractionDoc.Location = new Point(118, 42);
+            panelExtractionDoc.Location = new Point(94, 34);
+            panelExtractionDoc.Margin = new Padding(2, 0, 2, 0);
             panelExtractionDoc.Name = "panelExtractionDoc";
-            panelExtractionDoc.Size = new Size(533, 30);
+            panelExtractionDoc.Size = new Size(460, 25);
             panelExtractionDoc.TabIndex = 30;
             panelExtractionDoc.TabStop = true;
             panelExtractionDoc.Text = "Click Here for the Creation of Panel Drawing Steps";
@@ -108,13 +113,14 @@
             // 
             // PanelDrawingWindow
             // 
-            AutoScaleDimensions = new SizeF(10F, 25F);
+            AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             Controls.Add(panelExtractionDoc);
             Controls.Add(txtPanelDigit);
             Controls.Add(groupBox1);
+            Margin = new Padding(2, 2, 2, 2);
             Name = "PanelDrawingWindow";
-            Size = new Size(893, 640);
+            Size = new Size(714, 512);
             groupBox1.ResumeLayout(false);
             groupBox1.PerformLayout();
             ResumeLayout(false);

@@ -1162,7 +1162,7 @@ namespace Electre_Customize_DotNet.MainOperation
                     if (_customReportWindow.SelectedPanelList.Count > 0)
                     {
                         string fullPath = Path.Combine(templpath, PowerOnFolder);
-                        DeleteExistingFiles(fullPath);
+                        //DeleteExistingFiles(fullPath);
 
                         var SelectedPanels = _customReportWindow.SelectedPanelList;
                         foreach (var panel in SelectedPanels)
@@ -1318,7 +1318,7 @@ namespace Electre_Customize_DotNet.MainOperation
                         {
                             Directory.CreateDirectory(fullPath);
                         }
-                        DeleteExistingFiles(fullPath);
+                       // DeleteExistingFiles(fullPath);
 
                         var SelectedSheets = _customReportWindow.SelectedSheetListPanelDwgPower;
                         foreach (var sheet in SelectedSheets)
@@ -1423,95 +1423,6 @@ namespace Electre_Customize_DotNet.MainOperation
                                 }
                             }
                         }
-                        // commented on May 28, 2025 and this code is using arrFT_CwithBCProjectPageOff where this object is not required as every data is coming in arrFT_CwithBCProject object
-                        /* for (int y = 0; y < arrFT_CwithBCProjectPageOff.GetLength(0); y++)
-                         {
-                             if (arrFT_CwithBCProjectPageOff[y, 9] != null && arrFT_CwithBCProjectPageOff[y, 9].Equals(s))
-                             {
-                                 int lowerBoundCustomLoom = arrCustomLoom.GetLowerBound(0);
-                                 int upperBoundCustomLoom = arrCustomLoom.GetUpperBound(0);
-
-                                 for (int pp = 0; pp <= arrCustomLoom.GetLength(0); pp++)
-                                 {
-                                     if (!arrCustomLoom[pp, 5].Equals(arrFT_CwithBCProjectPageOff[y, 5]))
-                                     {
-                                         appendPage = true;
-                                     }
-                                     else
-                                     {
-                                         appendPage = false;
-                                         break;
-                                     }
-                                 }
-                             }
-
-                             if (appendPage)
-                             {
-                                 for (int x = 1; x <= 9; x++)
-                                 {
-                                     arrCustomLoom[z, x] = arrFT_CwithBCProjectPageOff[y, x];
-                                 }
-                                 z++;
-                                 appendPage = false;
-                             }
-                         }*/
-
-                        // commented on May 28, 2025 due to SDS components is not avaibale and the below code is not required
-                        // int maxRowsInarray = modExcelInst.MaxRowinArray(arrSDSloom);
-                        /* for (int k3 = 0; k3 < maxRowsInarray; k3++)
-                         {
-                             if (arrSDSloom[k3, 5]?.ToString() == s)
-                             {
-                                 for (int i = 0; i < ElecCollection.Count; i++)
-                                 {
-                                     E17 = ElecCollection[i] as ElectreObject;
-
-                                     if (E17 != null && E17.WireNumber == arrSDSloom[k3, 1]?.ToString() && E17.ComponentType != "SDS")
-                                     {
-                                         arrCustomLoom[z, 0] = E17.ConnectorName;
-                                         arrCustomLoom[z, 1] = E17.PinNumber;
-                                         arrCustomLoom[z, 6] = E17.Length;
-                                         arrCustomLoom[z, 2] = "SHIELD";
-                                         arrCustomLoom[z, 3] = "-";
-                                         arrCustomLoom[z, 4] = $"{E17.WireNumber}/{(!string.IsNullOrEmpty(E17.Gauge) && E17.Gauge.Length > 1 ? E17.Gauge.Substring(1) + "/" : "")}"; // Use C# slicing to trim the gauge
-                                         arrCustomLoom[z, 5] = E17.CableType;
-                                         arrCustomLoom[z, 7] = E17.SheetName;
-                                         arrCustomLoom[z, 8] = E17.BundleName;
-                                         string parentWCtoLook = E17.WireNumber.Substring(0, E17.WireNumber.Length - 3); // Exclude last 3 characters (like "SH1" or "SH2")
-                                         int lengthOfShieldCableToLook = parentWCtoLook.Length;
-
-                                         ElectreObject? E2 = null; // Declare E2 outside the loop to ensure it's available after the loop
-
-                                         for (int f = 0; f < ElecCollection.Count; f++)
-                                         {
-                                             E2 = ElecCollection[f] as ElectreObject;
-
-                                             if (E2 != null && E2.WireNumber.Length == lengthOfShieldCableToLook && E2.WireNumber == parentWCtoLook)
-                                             {
-                                                 Logging.Info(E2.CableType); // Equivalent to Debug.Print
-                                                 break; // Exit the loop once we find the matching E2
-                                             }
-                                         }
-
-                                         // Ensure E2 is not null before accessing its properties
-                                         if (E2 != null && (E2.CableType == "TX" || E2.CableType == "X" || E2.CableType == "BC"))
-                                         {
-                                             arrCustomLoom[z, 4] = E17.WireNumber;
-                                             arrCustomLoom[z, 5] = E17.CableType;
-                                             arrCustomLoom[z, 6] = null;
-                                         }
-                                         else
-                                         {
-                                             arrCustomLoom[z, 4] = $"{E17.WireNumber}/{(!string.IsNullOrEmpty(E17.Gauge) && E17.Gauge.Length > 1 ? E17.Gauge.Substring(1) + "/" : "")}";
-                                             arrCustomLoom[z, 5] = E17.CableType;
-                                             arrCustomLoom[z, 6] = E17.Length;
-                                         }
-                                         z++;
-                                     }
-                                 }
-                             }
-
-                         }*/
 
                         string sheetName = SanitizeSheetName(s);
                         // string workbookPath = modExcelInst.CreateNewWorkbook($"{s}_SHEET_Wirelist", sheetName, ConfigurationManager.AppSettings["SheetFolder"]);
@@ -1704,65 +1615,6 @@ namespace Electre_Customize_DotNet.MainOperation
                             }
                         }
 
-                        // commented on May 28, 2025 due to SDS components is not avaibale and the below code is not required
-                        /* int maxRowsInarray = modExcelInst.MaxRowinArray(arrSDSloom);
-
-                         for (int k3 = 0; k3 < maxRowsInarray; k3++)
-                         {
-                             if (arrSDSloom[k3, 0]?.ToString() == loomName)
-                             {
-                                 ElectreObject E1 = null;
-                                 for (int i = 0; i < ElecCollection.Count; i++)
-                                 {
-                                     E1 = ElecCollection[i] as ElectreObject;
-
-                                     if (E1 != null && E1.WireNumber == arrSDSloom[k3, 1]?.ToString() && E1.ComponentType != "SDS")
-                                     {
-                                         arrCustomLoom[Z, 0] = E1.ConnectorName;
-                                         arrCustomLoom[Z, 1] = E1.PinNumber;
-                                         arrCustomLoom[Z, 6] = E1.Length;
-                                         arrCustomLoom[Z, 2] = "SHIELD";
-                                         arrCustomLoom[Z, 3] = "-";
-                                         //arrCustomLoom[z, 4] = $"{E1.WireNumber}/{E1.Gauge.Substring(1)}"; // Use C# slicing to trim the gauge
-                                         //arrCustomLoom[z, 5] = E1.CableType;
-                                         arrCustomLoom[Z, 7] = "";// E1.SheetName;
-                                         arrCustomLoom[Z, 8] = "";// E1.BundleName;
-
-                                         string parentWCtoLook = E1.WireNumber.Substring(0, E1.WireNumber.Length - 3); // Exclude last 3 characters (like "SH1" or "SH2")
-                                         int lengthOfShieldCableToLook = parentWCtoLook.Length;
-
-                                         ElectreObject? E2 = null; // Declare E2 outside the loop to ensure it's available after the loop
-
-                                         for (int f = 0; f < ElecCollection.Count; f++)
-                                         {
-                                             E2 = ElecCollection[f] as ElectreObject;
-
-                                             if (E2 != null && E2.WireNumber.Length == lengthOfShieldCableToLook && E2.WireNumber == parentWCtoLook)
-                                             {
-                                                 Logging.Info(E2.CableType);
-                                                 break;
-                                             }
-                                         }
-
-                                         // Ensure E2 is not null before accessing its properties
-                                         if (E2 != null && (E2.CableType == "TX" || E2.CableType == "X" || E2.CableType == "BC"))
-                                         {
-                                             arrCustomLoom[Z, 4] = $"{E1.WireNumber}/{(!string.IsNullOrEmpty(E1.Gauge) && E1.Gauge.Length > 1 ? E1.Gauge.Substring(1) + "/" : "")}{E1.Core_Part_Number}";
-                                             arrCustomLoom[Z, 5] = null;
-                                             arrCustomLoom[Z, 6] = null;
-                                         }
-                                         else
-                                         {
-                                             arrCustomLoom[Z, 4] = $"{E1.WireNumber}/{(!string.IsNullOrEmpty(E1.Gauge) && E1.Gauge.Length > 1 ? E1.Gauge.Substring(1) + "/" : "")}{E1.Core_Part_Number}";
-                                             arrCustomLoom[Z, 5] = E1.CableType;
-                                             arrCustomLoom[Z, 6] = E1.Length;
-                                         }
-                                         Z++;
-                                     }
-                                 }
-                             }
-                         }*/
-
                         List<WireListLoomSort> loomSortList = new List<WireListLoomSort>();
                         loomSortList.Clear();
                         WireListLoomSort loomObject;
@@ -1793,11 +1645,6 @@ namespace Electre_Customize_DotNet.MainOperation
                                         .Select(x => new { x.Group, x.WireCode })
                                         .ToList();
 
-                        // Commented on September 08, 2025 due to Regular expression error if null Group or wirecode is there
-                        /*  var groupnumbers = loomSortList
-                              .Where(x => Regex.IsMatch(x.Group, @"^[A-Za-z]")).Select(x => new { x.Group, x.WireCode }) // If first char is A-Z or a-z, remove it
-                              .ToList();*/
-
                         // ✅ Regex pattern to match valid cable types (numbers with _, - or just digits)
                         Regex validPattern = new Regex(@"^[\dA-Za-z_-]+$");
 
@@ -1805,11 +1652,6 @@ namespace Electre_Customize_DotNet.MainOperation
                                         .Where(x => !string.IsNullOrEmpty(x.Group) && !validPattern.IsMatch(x.Group))
                                         .Select(x => new { x.Group, x.WireCode })
                                         .ToList();
-                        // Commented on September 08, 2025 due to Regular expression error if null Group or wirecode is there
-                        /*  var otherCableTypes = loomSortList
-                          .Where(x => !validPattern.IsMatch(x.Group))
-                          .Select(x => new { x.Group, x.WireCode })  // Select both Group and WireCode
-                          .ToList();*/
 
                         // Combine both lists
                         var combinedList = groupnumbers.Concat(otherCableTypes).ToList();
@@ -1824,9 +1666,6 @@ namespace Electre_Customize_DotNet.MainOperation
                         }
                         //if group number null
                         var nullGroupList = loomSortList.Where(x => x.Group == null || x.Group == "").ToList();
-
-                        //Commented on Nov,25 due to sheilded wires group id is null and those group id also required in loom report
-                        //loomSortList = loomSortList.Where(x => !string.IsNullOrEmpty(x.Group)).ToList();
 
                         foreach (var nullgroup in nullGroupList)
                         {
@@ -1973,83 +1812,11 @@ namespace Electre_Customize_DotNet.MainOperation
                                 }
                                 arrCustomLoom[Z, 9] = arrFT_CwithBCProject[Y, 12];
                                 arrCustomLoom[Z, 12] = arrFT_CwithBCProject[Y, 12];
-
-                                // Swap values as in the VBA code
-                                //string tempFromConnector = arrCustomLoom[Z, 0]?.ToString();
-                                //string tempFromPin = arrCustomLoom[Z, 1]?.ToString();
-
-                                //arrCustomLoom[Z, 0] = arrCustomLoom[Z, 2];  // Swap position 1 with 3
-                                //arrCustomLoom[Z, 1] = arrCustomLoom[Z, 3];  // Swap position 2 with 4
-                                //arrCustomLoom[Z, 2] = tempFromConnector;
-                                //arrCustomLoom[Z, 3] = tempFromPin;
-
-                                //// Set specific columns with values from arrFT_CwithBCProject
-                                //arrCustomLoom[Z, 7] = arrFT_CwithBCProject[Y, 9];
-                                //arrCustomLoom[Z, 8] = arrFT_CwithBCProject[Y, 10];
                                 arrCustomLoom[Z, 13] = arrFT_CwithBCProject[Y, 13];
 
                                 Z++;
                             }
                         }
-
-                        // commented on May 28, 2025 due to SDS components is not avaibale and the below code is not required
-                        /*int maxRowsInarray = modExcelInst.MaxRowinArray(arrSDSloom);
-                        for (int k3 = 0; k3 < maxRowsInarray; k3++)
-                        {
-                            if (arrSDSloom[k3, 0]?.ToString() == loomName)
-                            {
-                                ElectreObject E1 = null;
-                                for (int i = 0; i < ElecCollection.Count; i++)
-                                {
-                                    E1 = ElecCollection[i] as ElectreObject;
-
-                                    if (E1 != null && E1.WireNumber == arrSDSloom[k3, 1]?.ToString() && E1.ComponentType != "SDS")
-                                    {
-                                        arrCustomLoom[Z, 0] = E1.ConnectorName;
-                                        arrCustomLoom[Z, 1] = E1.PinNumber;
-                                        arrCustomLoom[Z, 6] = E1.Length;
-                                        arrCustomLoom[Z, 2] = "SHIELD";
-                                        arrCustomLoom[Z, 3] = "-";
-                                        //arrCustomLoom[z, 4] = $"{E1.WireNumber}/{E1.Gauge.Substring(1)}"; // Use C# slicing to trim the gauge
-                                        //arrCustomLoom[z, 5] = E1.CableType;
-                                        arrCustomLoom[Z, 7] = "";// E1.SheetName;
-                                        arrCustomLoom[Z, 8] = "";// E1.BundleName;
-                                        arrCustomLoom[Z, 13] = E1.Group;
-
-                                        string parentWCtoLook = E1.WireNumber.Substring(0, E1.WireNumber.Length - 3); // Exclude last 3 characters (like "SH1" or "SH2")
-                                        int lengthOfShieldCableToLook = parentWCtoLook.Length;
-
-                                        ElectreObject? E2 = null; // Declare E2 outside the loop to ensure it's available after the loop
-
-                                        for (int f = 0; f < ElecCollection.Count; f++)
-                                        {
-                                            E2 = ElecCollection[f] as ElectreObject;
-
-                                            if (E2 != null && E2.WireNumber.Length == lengthOfShieldCableToLook && E2.WireNumber == parentWCtoLook)
-                                            {
-                                                Logging.Info(E2.CableType);
-                                                break;
-                                            }
-                                        }
-
-                                        // Ensure E2 is not null before accessing its properties
-                                        if (E2 != null && (E2.CableType == "TX" || E2.CableType == "X" || E2.CableType == "BC"))
-                                        {
-                                            arrCustomLoom[Z, 4] = $"{E1.WireNumber}/{(!string.IsNullOrEmpty(E1.Gauge) && E1.Gauge.Length > 1 ? E1.Gauge.Substring(1) + "/" : "")}{E1.Core_Part_Number}";
-                                            arrCustomLoom[Z, 5] = null;
-                                            arrCustomLoom[Z, 6] = null;
-                                        }
-                                        else
-                                        {
-                                            arrCustomLoom[Z, 4] = $"{E1.WireNumber}/{(!string.IsNullOrEmpty(E1.Gauge) && E1.Gauge.Length > 1 ? E1.Gauge.Substring(1) + "/" : "")}{E1.Core_Part_Number}";
-                                            arrCustomLoom[Z, 5] = E1.CableType;
-                                            arrCustomLoom[Z, 6] = E1.Length;
-                                        }
-                                        Z++;
-                                    }
-                                }
-                            }
-                        }*/
 
                         List<loomSort> loomSortList = new List<loomSort>();
                         loomSortList.Clear();
@@ -2073,7 +1840,6 @@ namespace Electre_Customize_DotNet.MainOperation
                                 loomObject.layer = (string)arrCustomLoom[i, 12];
                                 loomObject.Group = (string)arrCustomLoom[i, 13];
 
-
                                 string[] wireCodeDisect = loomObject.WireCode.Split('/');
 
                                 if (wireCodeDisect.Length == 3)
@@ -2082,7 +1848,6 @@ namespace Electre_Customize_DotNet.MainOperation
                                     {
                                         loomObject.wireNumber = 1;
                                         loomObject.WireName = wireCodeDisect[0] + wireCodeDisect[1];
-
                                     }
                                     else
                                     {
@@ -2092,7 +1857,6 @@ namespace Electre_Customize_DotNet.MainOperation
                                         {
                                             loomObject.wireNumber = wn;
                                         }
-
                                         else
                                         {
                                             loomObject.wireNumber = wn;
@@ -2105,41 +1869,29 @@ namespace Electre_Customize_DotNet.MainOperation
                                     {
                                         loomObject.wireNumber = 1;
                                         loomObject.WireName = wireCodeDisect[0];
-
                                     }
                                     else
                                     {
                                         int wn = 1;
                                         loomObject.WireName = wireCodeDisect[0];
-
                                         loomObject.wireNumber = wn;
-
                                     }
-
-
                                 }
-
                                 else if (wireCodeDisect.Length == 1)
                                 {
                                     loomObject.wireNumber = 1;
                                     loomObject.WireName = wireCodeDisect[0];
                                 }
-
                                 else
                                 {
                                     loomObject.wireNumber = 0;
                                     loomObject.WireName = "";
                                 }
-
                                 loomSortList.Add(loomObject);
                             }
-
                         }
 
                         loomSortList.Distinct().ToList();
-
-                        //Commented on Nov,25 due to sheilded wires group id is null and those group id also required in loom report
-                        //loomSortList = loomSortList.Where(x => !string.IsNullOrEmpty(x.Group)).ToList();
 
                         // if group number start with a letters
                         var filteredLoomSortList = loomSortList
@@ -2168,26 +1920,15 @@ namespace Electre_Customize_DotNet.MainOperation
                         .ThenBy(x => x.WireCode)  // Sort by WireCode last
                       .ToList();
 
-
                         int loomRowCount = 0;
 
-
-                        //for (int i = 0; i < arrCustomLoom.GetLength(0); i++)
-                        //{
-                        //    if (arrCustomLoom[i, 0] != null && arrCustomLoom[i, 4] != null)
-                        //    {
-                        //        loomRowCount++;
-                        //    }
-                        //}
                         loomRowCount = loomSortList
                         .Where(x => !string.IsNullOrEmpty(x.FromConn) && !string.IsNullOrEmpty(x.WireCode))
                            .Count();
 
-
                         object[,] arrFinalReportLOOM = new object[loomRowCount + 1, 20];//incremented by one to assoiciate for the excel update.
 
                         loomSort arrFinalLoom = new loomSort();
-
 
                         for (int i = 0; i < loomRowCount; i++)
                         {
@@ -2211,18 +1952,14 @@ namespace Electre_Customize_DotNet.MainOperation
                                     {
                                         if (arr.Length > 3)
                                         {
-
                                             arrFinalReportLOOM[i + 1, 9] = arr[1];
                                             arrFinalReportLOOM[i + 1, 1] = arr[0] + "/" + arr[2];
                                         }
-
                                         else
                                         {
                                             arrFinalReportLOOM[i + 1, 9] = arrFinalLoom.WireType;
-                                            //arrFinalReportLOOM[i + 1, 1] = arr[0];
                                         }
                                     }
-
                                     else
                                     {
                                         continue;
@@ -2230,7 +1967,6 @@ namespace Electre_Customize_DotNet.MainOperation
                                 }
                                 else
                                 {
-
                                     arrFinalReportLOOM[i + 1, 9] = gug + "" + arr[1] + " " + arrFinalLoom.WireType;
                                 }
 
@@ -2238,16 +1974,8 @@ namespace Electre_Customize_DotNet.MainOperation
                             }
                         }
 
-                        //int S1;
-                        //string[] arr5;
-                        //string[] arr6;
-                        //string[] arr7; // To accommodate variable remarks merge for shield in loom
-                        //int SheetNum = 1;
-                        //int StartupRow = 1;
                         int SlNo = 0;
 
-                        // -1 to exclude current column/row
-                       // int LoomInitialCol = 1;
                         int LoomInitialRow = 8;
 
                         int LoomSheetRowRequired = 38;
@@ -2271,7 +1999,6 @@ namespace Electre_Customize_DotNet.MainOperation
                             {
                                 loomMergeStartRow = LoomSheetRowRequired;
                             }
-
                             else
                             {
                                 loomMergeStartRow = loomStartRowCount;
@@ -2291,7 +2018,6 @@ namespace Electre_Customize_DotNet.MainOperation
                             {
                                 loomMergeEndRow = LoomSheetRowRequired;
                             }
-
                             else
                             {
                                 loomMergeEndRow = loomMergeEndRowCount;
@@ -2338,19 +2064,15 @@ namespace Electre_Customize_DotNet.MainOperation
                     }
                     catch (Exception ex)
                     {
-
                         MessageBox.Show($"{loomName}:incorrect cable group id");
                         Logging.Error($"{loomName}: {ex.Message}");
-
                     }
                 }
             }
             catch (Exception ex)
             {
-
                 Logging.Error(ex.Message);
                 MessageBox.Show("ModMain ## 07" + ex.Message);
-
             }
         }
 

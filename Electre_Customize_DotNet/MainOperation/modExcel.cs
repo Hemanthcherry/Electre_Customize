@@ -1620,8 +1620,6 @@ namespace Electre_Customize_DotNet.MainOperation
                 ReportWB = ExcelApp.Workbooks.Add();
                 ExcelApp.DisplayAlerts = false;
 
-               
-
                 // Open the template workbook
                 TempWB = ExcelApp.Workbooks.Open(templatePath);
 
@@ -1733,15 +1731,11 @@ namespace Electre_Customize_DotNet.MainOperation
                                 strikeThroughRange.Font.Strikethrough = true; // Apply strikethrough
                                 ws1.Application.ScreenUpdating = true; // Force UI refresh
                                 ws1.Calculate(); // Ensure updates are reflected
-                            }
-                           // strikeThroughRange.Font.Strikethrough = true;
-                           
-
+                            }                         
                         }
 
                         if (!string.IsNullOrEmpty((string)iarr[Q, 12]))
                         {
-
                             if (iarr[Q, 11].ToString() == "ME")
                             {
                                 SubLoomMergeCellsWithaValue(iarr[Q, 12], iarr[Q, 13], iarr[Q, 14], iarr[Q, 15], iarr[Q, 16], iarr[Q, 18]);
@@ -1754,7 +1748,6 @@ namespace Electre_Customize_DotNet.MainOperation
                             {
                                 ws1.Cells[LoomInitialRow + O, LoomInitialCol].Value = iarr[Q, 14];
                             }
-
                         }
 
                         if (Q < iarr.GetLength(0) - 1)
@@ -1765,16 +1758,7 @@ namespace Electre_Customize_DotNet.MainOperation
                         {
                             break;
                         }
-
-
                     }
-
-                    // Set report name and sheet info in specific ranges
-
-                    //if (R == 1)
-                    //{
-                    //    ws1.Range["F51"].Value = reportName;
-                    //}
 
                     ws1.Range["L51:L52"].FormulaR1C1 = $"SHEET {R} OF {ReportWB.Sheets.Count} SHEETS";
                     ws1.Range["B3:D4"].FormulaR1C1 = "";
@@ -1786,24 +1770,16 @@ namespace Electre_Customize_DotNet.MainOperation
                             ws1.Range["F51:F52"].Value = reportName.Substring(0, reportName.Length - 1);
                             ws1.Range["K52"].Value = reportName.Substring(reportName.Length - 1);
                         }
-
                         else
                         {
                             ws1.Range["F51:F52"].Value = reportName;
                             ws1.Range["K52"].Value = "";
                         }
-
-                    }
-                   
-
+                    }                  
                     ws1.Range["B47"].Value = DateTime.Now.Year;
-                    alignCellsXl(8, 46);
-                   
-
+                    alignCellsXl(8, 46);                  
                 }
                
-                // Select cell A1 and save the workbookB
-                //ReportWB.Sheets[1].Range["A1"].Select();
                 ReportWB.Save();
             }
             catch (COMException ex)
@@ -1819,7 +1795,6 @@ namespace Electre_Customize_DotNet.MainOperation
             finally
             {
                 // Clean up resources              
-
                 if (ReportWB != null)
                 {
                     ReportWB.Close(true);
