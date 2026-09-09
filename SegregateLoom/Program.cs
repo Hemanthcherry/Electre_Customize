@@ -17,8 +17,8 @@ namespace SegregateLoom
             if (mutex.WaitOne(TimeSpan.Zero, true))
             {
                 if (args.Length > 0)
-                
-                GlobalVar.StrtCmd = args[0];
+                    GlobalVar.StrtCmd = args[0];
+
                 GlobalVar.MsFolder = Path.Combine(args[0], "result");
                
                 Application.EnableVisualStyles();

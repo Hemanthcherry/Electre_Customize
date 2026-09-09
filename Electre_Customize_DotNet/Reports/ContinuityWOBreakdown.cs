@@ -168,7 +168,7 @@ namespace Electre_Customize_DotNet.Reports
                     {
                         // Find matching suffix
                         var matchingSuffix = modMain.connectorMap.Keys
-                            .FirstOrDefault(suffix => obj.ConnectorName.EndsWith($"{suffix}", StringComparison.OrdinalIgnoreCase));
+                            .FirstOrDefault(suffix => obj.ConnectorName.EndsWith($"_{suffix}", StringComparison.OrdinalIgnoreCase));
 
                         if (matchingSuffix != null)
                         {
