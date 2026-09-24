@@ -51,11 +51,22 @@ namespace Electre_Customize_DotNet.MainOperation
 
             if (monoPairConflicts.Count > 0)
             {
+                // The original re-scanned wireListCountList with .Any() on every iteration, so a
+                // conflict already added earlier in THIS loop would be found by a later iteration's
+                // scan too (the list grows as the loop runs). Reproduce that exactly with a HashSet
+                // that is kept in sync as entries are added, instead of doing an O(wireListCountList.Count)
+                // linear scan per conflict. Keys are null-safely upper-invariant normalized to match
+                // string.Equals(..., StringComparison.OrdinalIgnoreCase) (null only equals null).
+                static string CI(string s) => s == null ? null : s.ToUpperInvariant();
+
+                var wireListCountKeys = new HashSet<(string, string)>(
+                    wireListCountList.Select(w => (CI(w.WireNumber), CI(w.Core_Part_Number))));
+
                 foreach (var conflict in monoPairConflicts)
                 {
-                    if (!wireListCountList.Any(w =>
-                        string.Equals(w.WireNumber, conflict.WireNumber, StringComparison.OrdinalIgnoreCase) &&
-                        string.Equals(w.Core_Part_Number, conflict.Core_Part_Number, StringComparison.OrdinalIgnoreCase)))
+                    var conflictKey = (CI(conflict.WireNumber), CI(conflict.Core_Part_Number));
+
+                    if (wireListCountKeys.Add(conflictKey))
                     {
                         wireListCountList.Add(new WireListCount
                         {

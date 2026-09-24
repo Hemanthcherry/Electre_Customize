@@ -104,9 +104,12 @@ namespace SegregateLoom
 
             try
             {
+                // HashSet with the exact same (default, case-sensitive) comparer List.Contains used,
+                // so matching behavior is unchanged - just O(1) per worksheet instead of O(searchedList.Count).
+                var searchedSet = new HashSet<string>(searchedList);
                 foreach (Excel.Worksheet worksheet in workbook.Worksheets)
                 {
-                    if (searchedList.Contains(worksheet.Name.ToUpper()))
+                    if (searchedSet.Contains(worksheet.Name.ToUpper()))
                     {
                         ProcessWorksheet(worksheet, destinationFolder);
                     }
@@ -396,6 +399,24 @@ namespace SegregateLoom
                 int lastRowUsed = used.Rows.Count;
                 int lastColumnUsed = used.Columns.Count;
 
+                // Bulk-read the exact same absolute cell block (rows 1..lastRowUsed, cols
+                // 1..lastColumnUsed - matching what the per-cell loop below always indexed from,
+                // not used.Row/used.Column) in a single COM call instead of one call per cell.
+                // Falls back to the original per-cell read only for the degenerate single-cell
+                // case, where Range.Value2 returns a scalar rather than a 2D array.
+                Func<int, int, object> getCellValue;
+                Excel.Range bulkRange = null;
+                if (lastRowUsed >= 1 && lastColumnUsed >= 1 && !(lastRowUsed == 1 && lastColumnUsed == 1))
+                {
+                    bulkRange = worksheet.Range[worksheet.Cells[1, 1], worksheet.Cells[lastRowUsed, lastColumnUsed]];
+                    object[,] bulkValues = (object[,])bulkRange.Value2;
+                    getCellValue = (r, c) => bulkValues[r, c];
+                }
+                else
+                {
+                    getCellValue = (r, c) => worksheet.Cells[r, c].Value2;
+                }
+
                 string fileName = Path.Combine(outputFolder, $"{worksheet.Name}_2DMS.csv");
 
                 using (StreamWriter writer = new StreamWriter(fileName))
@@ -417,7 +438,7 @@ namespace SegregateLoom
 
                         for (int col = 1; col <= lastColumnUsed; col++)
                         {
-                            var cellValue = worksheet.Cells[row, col].Value2;
+                            var cellValue = getCellValue(row, col);
                             string text = cellValue != null ? cellValue.ToString() : "";
 
                             line += text + ";";
@@ -437,6 +458,7 @@ namespace SegregateLoom
                 }
 
                 Logging.Info($"{worksheet.Name}.csv generated");
+                if (bulkRange != null) ReleaseCOM(bulkRange);
                 ReleaseCOM(used);
             }
             catch (Exception ex)

@@ -11,13 +11,16 @@ using System.Reflection.Emit;
 using System.Runtime.InteropServices.Marshalling;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Windows.Forms;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.StartPanel;
 using Application = System.Windows.Forms.Application;
 using Excel = Microsoft.Office.Interop.Excel;
 using Range = Microsoft.Office.Interop.Excel.Range;
+using Electre_Customize_DotNet.Helpers.CableList;
+using Electre_Customize_DotNet.Helpers.ExcelHelpers;
+using Electre_Customize_DotNet.Helpers.Global;
+using Electre_Customize_DotNet.Helpers.Megger;
 
 namespace Electre_Customize_DotNet.MainOperation
 {
@@ -351,33 +354,51 @@ namespace Electre_Customize_DotNet.MainOperation
                 SDSloomCount = 0;
 
                 // Process ElectreObjects
+                // arrListOfPANEL and arrConnectorNAMEandPIN are never sorted afterward in this
+                // method (unlike the ten lists below), so their final order is whatever first-
+                // occurrence insertion order UniqueStringList produces - they keep using it. The
+                // other ten always get .OrderBy().ToList()'d right after this loop regardless of
+                // insertion order, so accumulating them into a plain HashSet (dedup only, no
+                // per-call scan/cache lookup at all) and sorting once at the end is equivalent and
+                // cheaper than even the cached UniqueStringList.
+                var setComponents = new HashSet<string>();
+                var setLoom = new HashSet<string>();
+                var setSheet = new HashSet<string>();
+                var setJun = new HashSet<string>();
+                var setJunSpl = new HashSet<string>();
+                var setEqu = new HashSet<string>();
+                var setRel = new HashSet<string>();
+                var setDis = new HashSet<string>();
+                var setSpl = new HashSet<string>();
+                var setSwt = new HashSet<string>();
+
                 for (i = 0; i < ElecCollection.Count; i++)
                 {
                     ElectreObj = ElecCollection[i];
 
-                    SearchAndAppend(ElectreObj.ConnectorName, ref arrListOfComponents);
-                    SearchAndAppend(ElectreObj.BundleName, ref arrListOfLOOM);
-                    SearchAndAppend(ElectreObj.SheetName, ref arrListOfSHEET);
-                    SearchAndAppend(ElectreObj.Panel, ref arrListOfPANEL);
+                    setComponents.Add(ElectreObj.ConnectorName);
+                    setLoom.Add(ElectreObj.BundleName);
+                    setSheet.Add(ElectreObj.SheetName);
+                    UniqueStringList.TryAdd(ElectreObj.Panel, ref arrListOfPANEL);
 
                     switch (ElectreObj.ComponentType)
                     {
                         case "TBK":
-                            SearchAndAppend(ElectreObj.ConnectorName, ref arrListOfJUN);
-                            SearchAndAppend(ElectreObj.ConnectorName, ref arrListOfJUNnSPL); // For JM Link
+                            setJun.Add(ElectreObj.ConnectorName);
+                            setJunSpl.Add(ElectreObj.ConnectorName); // For JM Link
                             break;
                         case "EQU":
-                            SearchAndAppend(ElectreObj.ConnectorName, ref arrListOfEQU); // For Connector
+                            setEqu.Add(ElectreObj.ConnectorName); // For Connector
                             break;
                         case "REL":
-                            SearchAndAppend(ElectreObj.ConnectorName, ref arrListOfREL);   // For Realy
+                            setRel.Add(ElectreObj.ConnectorName);   // For Realy
                             break;
                         case "DIS":
-                            SearchAndAppend(ElectreObj.ConnectorName, ref arrListOfDIS);  // For Break Connector
+                            setDis.Add(ElectreObj.ConnectorName);  // For Break Connector
                             break;
                         case "SPL":
-                            SearchAndAppend(ElectreObj.ConnectorName, ref arrListOfSPL);
-                            SearchAndAppend(ElectreObj.ConnectorName, ref arrListOfJUNnSPL); // For JM Link
+                            setSpl.Add(ElectreObj.ConnectorName);
+                            setJunSpl.Add(ElectreObj.ConnectorName); // For JM Link
                             break;
                         case "SWT":
                         case "ERM":
@@ -391,30 +412,30 @@ namespace Electre_Customize_DotNet.MainOperation
                         case "ANT":
                         case "BUS":
                         case "MSW":
-                            SearchAndAppend(ElectreObj.ConnectorName, ref arrListOfSWT);
+                            setSwt.Add(ElectreObj.ConnectorName);
                             break;
                     }
 
                     // List the number of pins in each connector
                     if (ElectreObj.ComponentType == "EQU")
                     {
-                        SearchAndAppend($"{ElectreObj.ConnectorName};{ElectreObj.PinNumber}", ref arrConnectorNAMEandPIN);
+                        UniqueStringList.TryAdd($"{ElectreObj.ConnectorName};{ElectreObj.PinNumber}", ref arrConnectorNAMEandPIN);
                     }
                 }
 
-                arrListOfComponentsInPANEL = new object[arrListOfComponents.Count, 4];
+                arrListOfComponentsInPANEL = new object[setComponents.Count, 4];
 
                 // sorting lists by order
-                arrListOfLOOM = arrListOfLOOM.OrderBy(x => x).ToList();
-                arrListOfSHEET = arrListOfSHEET.OrderBy(x => x).ToList();
-                arrListOfComponents = arrListOfComponents.OrderBy(x => x).ToList();
-                arrListOfJUN = arrListOfJUN.OrderBy(x => x).ToList();
-                arrListOfJUNnSPL = arrListOfJUNnSPL.OrderBy(x => x).ToList();
-                arrListOfSPL = arrListOfSPL.OrderBy(x => x).ToList();
-                arrListOfEQU = arrListOfEQU.OrderBy(x => x).ToList();
-                arrListOfREL = arrListOfREL.OrderBy(x => x).ToList();
-                arrListOfDIS = arrListOfDIS.OrderBy(x => x).ToList();
-                arrListOfSWT = arrListOfSWT.OrderBy(x => x).ToList();
+                arrListOfLOOM = setLoom.OrderBy(x => x).ToList();
+                arrListOfSHEET = setSheet.OrderBy(x => x).ToList();
+                arrListOfComponents = setComponents.OrderBy(x => x).ToList();
+                arrListOfJUN = setJun.OrderBy(x => x).ToList();
+                arrListOfJUNnSPL = setJunSpl.OrderBy(x => x).ToList();
+                arrListOfSPL = setSpl.OrderBy(x => x).ToList();
+                arrListOfEQU = setEqu.OrderBy(x => x).ToList();
+                arrListOfREL = setRel.OrderBy(x => x).ToList();
+                arrListOfDIS = setDis.OrderBy(x => x).ToList();
+                arrListOfSWT = setSwt.OrderBy(x => x).ToList();
 
                 //Reading_And_StoringData_In2DArray();
                 //Removing_DuplicateWires_In2DArray();
@@ -604,60 +625,37 @@ namespace Electre_Customize_DotNet.MainOperation
                 sCableType_2 = string.Join("_", arrCableType_2); //'Wirecode with - wireNumber & .Tag7 & Subnet
 
                 // Process ElectreObjects
+                // arrListOfPANEL is sorted right after this loop (unlike in MainFunction(), where
+                // it's left in insertion order), so it's safe to accumulate into a plain HashSet
+                // here instead of the order-preserving UniqueStringList cache.
+                int panelCount = ElecCollection_Panel.Count;
+                var setPanel = new HashSet<string>(panelCount);
+                var setBreakers = new HashSet<string>(arrPowerOnCircuitBreakers);
+                var setBreakerTypes = new HashSet<string>(arrPowerOnCircuitBreakersType);
+
                 for (i = 0; i < ElecCollection_Panel.Count; i++)
                 {
                     ElectreObj = ElecCollection_Panel[i];
+                    string connector = ElectreObj.ConnectorName;
 
-                    // SearchAndAppend(ElectreObj.ConnectorName, ref arrListOfComponents);
-                    // SearchAndAppend(ElectreObj.BundleName, ref arrListOfLOOM);
-                    // SearchAndAppend(ElectreObj.SheetName, ref arrListOfSHEET);
-                    SearchAndAppend(ElectreObj.Panel, ref arrListOfPANEL);
+                    if (ElectreObj.Panel != null)
+                        setPanel.Add(ElectreObj.Panel);
 
                     switch (ElectreObj.ComponentType)
                     {
-                        case "TBK":
-                            //  SearchAndAppend(ElectreObj.ConnectorName, ref arrListOfJUN);
-                            //  SearchAndAppend(ElectreObj.ConnectorName, ref arrListOfJUNnSPL); // For JM Link
-                            break;
-                        case "EQU":
-                            // SearchAndAppend(ElectreObj.ConnectorName, ref arrListOfEQU);
-                            break;
-                        case "REL":
-                            // SearchAndAppend(ElectreObj.ConnectorName, ref arrListOfREL);
-                            break;
-                        case "DIS":
-                            // SearchAndAppend(ElectreObj.ConnectorName, ref arrListOfDIS);
-                            break;
-                        case "SPL":
-                            // SearchAndAppend(ElectreObj.ConnectorName, ref arrListOfSPL);
-                            // SearchAndAppend(ElectreObj.ConnectorName, ref arrListOfJUNnSPL); // For JM Link
-                            break;
-                        case "SWT":
-                        case "ERM":
-                        case "IND":
                         case "SCB":
-                            SearchAndAppend(ElectreObj.ConnectorName, ref arrPowerOnCircuitBreakers);
-                            SearchAndAppend(ElectreObj.ComponentType, ref arrPowerOnCircuitBreakersType);
-                            break;
                         case "TCB":
-                            SearchAndAppend(ElectreObj.ConnectorName, ref arrPowerOnCircuitBreakers);
-                            SearchAndAppend(ElectreObj.ComponentType, ref arrPowerOnCircuitBreakersType);
-                            break;
-                        case "TER":
-                        case "FUS":
-                        case "POT":
-                        case "LMP":
-                        case "ANT":
-                        case "BUS":
-                        case "MSW":
-                            //SearchAndAppend(ElectreObj.ConnectorName, ref arrListOfSWT);
+                            if (connector != null && setBreakers.Add(connector))
+                                arrPowerOnCircuitBreakers.Add(connector);
+                            if (ElectreObj.ComponentType != null && setBreakerTypes.Add(ElectreObj.ComponentType))
+                                arrPowerOnCircuitBreakersType.Add(ElectreObj.ComponentType);
                             break;
                     }
 
                     // List the number of pins in each connector
                     if (ElectreObj.ComponentType == "EQU")
                     {
-                        SearchAndAppend($"{ElectreObj.ConnectorName};{ElectreObj.PinNumber}", ref arrConnectorNAMEandPIN);
+                        UniqueStringList.TryAdd($"{ElectreObj.ConnectorName};{ElectreObj.PinNumber}", ref arrConnectorNAMEandPIN);
                     }
                 }               
 
@@ -665,7 +663,7 @@ namespace Electre_Customize_DotNet.MainOperation
 
                 arrListOfComponentsInPANEL = new object[arrListOfComponents.Count, 4];
 
-                arrListOfPANEL = arrListOfPANEL.OrderBy(x => x).ToList();
+                arrListOfPANEL = setPanel.OrderBy(x => x).ToList();
 
                 Reading_And_StoringData_In2DArray();
                 Removing_DuplicateWires_In2DArray();
@@ -682,23 +680,6 @@ namespace Electre_Customize_DotNet.MainOperation
                 throw new Exception();
             }
         }
-        // This method adds components to a List object
-        public static bool SearchAndAppend(string istrName, ref List<string> iarr)
-        {
-            for (int J = 0; J < iarr.Count; J++)
-            {
-                if (iarr[J].Equals(istrName))
-                {
-                    // Item found, nothing to add
-                    return false; // Returns if anything was added or not
-                }
-            }
-
-            // Item not found, resize the array and add the new item           
-            iarr.Add(istrName);
-
-            return true; // Returns if anything was added or not
-        }
 
         //this method assigning data from Elecollection object to 2d array arrFT_CwithBC and this arrFT_CwithBC Used for Componentes specifice breakdown reports generation purpose
         public static void Removing_DuplicateWires_In2DArray()
@@ -707,6 +688,15 @@ namespace Electre_Customize_DotNet.MainOperation
             {
                 CwithBCReportRow = 0;
                 Logging.Info($"Removing_DuplicateWires_In2DArray started");
+
+                // Same shape of bug as Reading_And_StoringData_In2DArray: the inner do-while
+                // rescanned the ENTIRE collection for every i, making this O(ElecCollection.Count^2).
+                // Unlike that method, this one has no "consume/Link" state - it deliberately emits
+                // BOTH directions of every matching pair (i->j and, later, j->i), so the group of
+                // candidates sharing a key must stay available for every member to enumerate, not
+                // be drained like a queue. Group indices by (WireNumber, SubNet) once instead.
+                var wireSubNetGroups = WireSubNetIndex.BuildGroups(ElecCollection);
+
                 for (int i = 0; i < ElecCollection.Count; i++)
                 {
                     ElectreObject E1 = ElecCollection[i];
@@ -727,7 +717,7 @@ namespace Electre_Customize_DotNet.MainOperation
                         arrFT_CwithBC[CwithBCReportRow, 7] = E1.SheetName;
                         arrFT_CwithBC[CwithBCReportRow, 8] = E1.BundleName;
 
-                        string coreNumber = IsValidCoreNumber(E1.Core_Part_Number) ? E1.Core_Part_Number : "";
+                        string coreNumber = CoreNumberRules.IsValid(E1.Core_Part_Number) ? E1.Core_Part_Number : "";
                         // Build wire code
 
                         if (sCableType_O.Contains("_" + E1.CableType + "_") && E1.CableType != "HTSS")
@@ -762,28 +752,25 @@ namespace Electre_Customize_DotNet.MainOperation
 
                         }
 
-                        int j = 0;
-                        do
+                        // Original scanned j=0..n-1 in order finding every match; replicate that
+                        // ordering using the precomputed group instead of rescanning ElecCollection.
+                        var key = WireSubNetIndex.KeyOf(E1);
+                        if (wireSubNetGroups.TryGetValue(key, out var group))
                         {
-                            if (j != i) // To omit this line
+                            foreach (int j in group)
                             {
-                                // Removed signal == condition HAL
-                                if (ElecCollection[j].WireNumber.ToUpper() == E1.WireNumber.ToUpper() &&
-                                     ElecCollection[j].SubNet.ToUpper() == E1.SubNet.ToUpper() &&
-                                     ElecCollection[j].ComponentType != "SDS" &&
-                                        !string.IsNullOrEmpty(ElecCollection[j].WireNumber))
+                                if (j == i)
                                 {
-                                    arrFT_CwithBC[CwithBCReportRow, TC1] = ElecCollection[j].ConnectorName;
-                                    arrFT_CwithBC[CwithBCReportRow, TP1] = ElecCollection[j].PinNumber;
-                                    arrFT_CwithBC[CwithBCReportRow, 10] = layerAssign(ElecCollection[j].Layer);
-
-                                    // Logging.Info($"{CwithBCReportRow}: {arrFT_CwithBC[CwithBCReportRow, 0]}--{arrFT_CwithBC[CwithBCReportRow, 1]}--{arrFT_CwithBC[CwithBCReportRow, 2]}--{arrFT_CwithBC[CwithBCReportRow, 3]}");
-
-                                    CwithBCReportRow++;
+                                    continue; // matches the original's `j != i`
                                 }
+
+                                arrFT_CwithBC[CwithBCReportRow, TC1] = ElecCollection[j].ConnectorName;
+                                arrFT_CwithBC[CwithBCReportRow, TP1] = ElecCollection[j].PinNumber;
+                                arrFT_CwithBC[CwithBCReportRow, 10] = LayerCodes.ToNerd(ElecCollection[j].Layer);
+
+                                CwithBCReportRow++;
                             }
-                            j++;
-                        } while (j < ElecCollection.Count);
+                        }
                     }
                 }
                 Logging.Info($"Removing_DuplicateWires_In2DArray Ended");
@@ -806,6 +793,19 @@ namespace Electre_Customize_DotNet.MainOperation
 
                 Logging.Info("Reading_And_StoringData_In2DArray Started");
 
+                // The inner search below looks for the first OTHER index sharing the same
+                // (WireNumber, SubNet) key (case-insensitive) that hasn't been consumed yet -
+                // originally a fresh linear scan of the whole collection for every outer i, making
+                // this method O(ElecCollection.Count^2). Since every valid index eventually gets
+                // marked Tag6_Link="Linked" (either as some earlier outer i's own row, or as an
+                // earlier i's partner), by the time the outer loop reaches index i every valid
+                // index below i is already linked - so the only indices the inner scan can ever
+                // actually match are the ones still ahead of it. Precomputing a per-key queue of
+                // candidate indices (in original order) lets each index be dequeued at most once
+                // across the whole run, turning the search amortized O(1) per outer i instead of
+                // O(ElecCollection.Count).
+                var partnerQueueByKey = WireSubNetIndex.BuildQueues(ElecCollection);
+
                 for (int i = 0; i < ElecCollection.Count; i++)
                 {
                     E1 = ElecCollection[i];
@@ -827,7 +827,7 @@ namespace Electre_Customize_DotNet.MainOperation
                         arrFT_CwithBCProject[CwithBCReportRowProject, 7] = E1.SheetName;
                         arrFT_CwithBCProject[CwithBCReportRowProject, 8] = E1.BundleName;
 
-                        string coreNumber = IsValidCoreNumber(E1.Core_Part_Number) ? E1.Core_Part_Number : "";
+                        string coreNumber = CoreNumberRules.IsValid(E1.Core_Part_Number) ? E1.Core_Part_Number : "";
 
                         if (sCableType_O.Contains($"_{E1.CableType}_") && E1.CableType != "HTSS")
                         {
@@ -862,31 +862,31 @@ namespace Electre_Customize_DotNet.MainOperation
 
                         }
 
-                        int j = 0;
-                        do
+                        // NOTE: the original has no `break` here - if more than one other index
+                        // shares this key, EVERY one of them (not just the first) gets treated as
+                        // a match and consumes its own row, same as reproduced below.
+                        var key = WireSubNetIndex.KeyOf(E1);
+                        if (partnerQueueByKey.TryGetValue(key, out var candidateQueue))
                         {
-                            if (i != j)
+                            while (candidateQueue.Count > 0)
                             {
-                                if (ElecCollection[j].WireNumber.ToUpper() == E1.WireNumber.ToUpper() &&
-                                     ElecCollection[j].SubNet.ToUpper() == E1.SubNet.ToUpper() &&
-                                     ElecCollection[j].ComponentType != "SDS" &&
-                                        !string.IsNullOrEmpty(ElecCollection[j].WireNumber) &&
-                                        ElecCollection[j].Tag6_Link != "Linked")
+                                int j = candidateQueue.Dequeue();
+                                if (j == i || ElecCollection[j].Tag6_Link == "Linked")
                                 {
-                                    arrFT_CwithBCProject[CwithBCReportRowProject, TC1] = ElecCollection[j].ConnectorName;
-                                    arrFT_CwithBCProject[CwithBCReportRowProject, TP1] = ElecCollection[j].PinNumber;
-                                    arrFT_CwithBCProject[CwithBCReportRowProject, 9] = ElecCollection[j].SheetName;
-                                    arrFT_CwithBCProject[CwithBCReportRowProject, 10] = ElecCollection[j].BundleName;
-                                    ElecCollection[j].Tag6_Link = "Linked";
-                                    arrFT_CwithBCProject[CwithBCReportRowProject, 12] = layerAssign(ElecCollection[j].Layer);
-                                    arrFT_CwithBCProject[CwithBCReportRowProject, 13] = ElecCollection[j].Group;
-
-                                    // Logging.Info($"{arrFT_CwithBCProject[CwithBCReportRowProject, 0]}--{arrFT_CwithBCProject[CwithBCReportRowProject, 1]}--{arrFT_CwithBCProject[CwithBCReportRowProject, 2]}--{arrFT_CwithBCProject[CwithBCReportRowProject, 3]}");
-                                    CwithBCReportRowProject++;
+                                    continue; // matches the original's `i != j` / Tag6_Link check
                                 }
+
+                                arrFT_CwithBCProject[CwithBCReportRowProject, TC1] = ElecCollection[j].ConnectorName;
+                                arrFT_CwithBCProject[CwithBCReportRowProject, TP1] = ElecCollection[j].PinNumber;
+                                arrFT_CwithBCProject[CwithBCReportRowProject, 9] = ElecCollection[j].SheetName;
+                                arrFT_CwithBCProject[CwithBCReportRowProject, 10] = ElecCollection[j].BundleName;
+                                ElecCollection[j].Tag6_Link = "Linked";
+                                arrFT_CwithBCProject[CwithBCReportRowProject, 12] = LayerCodes.ToNerd(ElecCollection[j].Layer);
+                                arrFT_CwithBCProject[CwithBCReportRowProject, 13] = ElecCollection[j].Group;
+
+                                CwithBCReportRowProject++;
                             }
-                            j++;
-                        } while (j < ElecCollection.Count);
+                        }
 
                     }
                 }
@@ -899,11 +899,6 @@ namespace Electre_Customize_DotNet.MainOperation
                 MessageBox.Show("modMain #002: " + ex.Message);
             }
         }
-        private static bool IsValidCoreNumber(string tag3)
-        {
-            return int.TryParse(tag3, out int coreNumber) && coreNumber >= 1 && coreNumber <= 18;
-        }
-
         //this method is the entry point for reports generations 
         public async void ReportExcecution()
         {
@@ -1001,6 +996,7 @@ namespace Electre_Customize_DotNet.MainOperation
                     // Cable List
                     if (_customReportWindow.projectWireList)
                     {
+                        var __swWireList = PerfDiagnostics.StartTimer();
                         CwithBCReportRow = 0;
                         Logging.Info("WireList report Started");
                         string workbookPath = modExcelInst.CreateNewWorkbook("WireList", "WireList", ConfigurationManager.AppSettings["WireListFolder"]);
@@ -1018,10 +1014,12 @@ namespace Electre_Customize_DotNet.MainOperation
                         });
 
                         Logging.Info("WireList report Completed");
+                        PerfDiagnostics.StopAndLog(__swWireList, "ReportGeneration", "WireList", ("InputCount", ElecCollection_All?.Count ?? 0));
                     }
 
                     if (_customReportWindow.SelectedLoomList.Count > 0)
                     {
+                        var __swLoom = PerfDiagnostics.StartTimer();
                         string fullPath = Path.Combine(templpath, wireListLoomFolder);
                         string fullPathBundle = Path.Combine(templpath, wireListBundleFolder);
 
@@ -1038,10 +1036,12 @@ namespace Electre_Customize_DotNet.MainOperation
                         {
                             _loadingForm.LbsLoadinMessag = "Looms Report Generated";
                         });
+                        PerfDiagnostics.StopAndLog(__swLoom, "ReportGeneration", "LoomWireList", ("SelectedLoomCount", _customReportWindow.SelectedLoomList.Count));
                     }
 
                     if (_customReportWindow.SelectedSheetList.Count > 0)
                     {
+                        var __swSheet = PerfDiagnostics.StartTimer();
                         string fullPath = Path.Combine(templpath, wireListSheetFolder);
                        // DeleteExistingFiles(fullPath);
 
@@ -1052,11 +1052,13 @@ namespace Electre_Customize_DotNet.MainOperation
                         {
                             _loadingForm.LbsLoadinMessag = "Sheet Report Generated";
                         });
+                        PerfDiagnostics.StopAndLog(__swSheet, "ReportGeneration", "SheetWireList", ("SelectedSheetCount", _customReportWindow.SelectedSheetList.Count));
                     }
 
                     // Component Breakdown
                     if (_customReportWindow.SelectedEqupList.Count > 0)
                     {
+                        var __swEqup = PerfDiagnostics.StartTimer();
                         string fullPath = Path.Combine(templpath, EquipmentFolder);
                         //DeleteExistingFiles(fullPath);
 
@@ -1067,10 +1069,12 @@ namespace Electre_Customize_DotNet.MainOperation
                         {
                             _loadingForm.LbsLoadinMessag = "Equipment Report Generated";
                         });
+                        PerfDiagnostics.StopAndLog(__swEqup, "ReportGeneration", "Equipment", ("SelectedCount", _customReportWindow.SelectedEqupList.Count));
                     }
 
                     if (_customReportWindow.SelectedBrkList.Count > 0)
                     {
+                        var __swBrk = PerfDiagnostics.StartTimer();
                         string fullPath = Path.Combine(templpath, BrkFolder);
                         //DeleteExistingFiles(fullPath);
 
@@ -1081,10 +1085,12 @@ namespace Electre_Customize_DotNet.MainOperation
                         {
                             _loadingForm.LbsLoadinMessag = "Break Down Report Generated";
                         });
+                        PerfDiagnostics.StopAndLog(__swBrk, "ReportGeneration", "BreakConn", ("SelectedCount", _customReportWindow.SelectedBrkList.Count));
                     }
 
                     if (_customReportWindow.SelectedJmList.Count > 0)
                     {
+                        var __swJm = PerfDiagnostics.StartTimer();
                         string fullPath = Path.Combine(templpath, JmFolder);
                         //DeleteExistingFiles(fullPath);
 
@@ -1095,10 +1101,12 @@ namespace Electre_Customize_DotNet.MainOperation
                         {
                             _loadingForm.LbsLoadinMessag = "Junction Module Report Generated";
                         });
+                        PerfDiagnostics.StopAndLog(__swJm, "ReportGeneration", "JunctionModule", ("SelectedCount", _customReportWindow.SelectedJmList.Count));
                     }
 
                     if (_customReportWindow.SelectedMiscList.Count > 0)
                     {
+                        var __swMisc = PerfDiagnostics.StartTimer();
                         string fullPath = Path.Combine(templpath, MiscFolder);
                         //DeleteExistingFiles(fullPath);
 
@@ -1109,11 +1117,13 @@ namespace Electre_Customize_DotNet.MainOperation
                         {
                             _loadingForm.LbsLoadinMessag = "MISC Report Generated";
                         });
+                        PerfDiagnostics.StopAndLog(__swMisc, "ReportGeneration", "Misc", ("SelectedCount", _customReportWindow.SelectedMiscList.Count));
                     }
 
                     //Continuity
                     if (_customReportWindow.SelectedContLoomList.Count > 0)
                     {
+                        var __swCont = PerfDiagnostics.StartTimer();
                         ContinuityWOBreakdown cwob = new ContinuityWOBreakdown(modExcelInst, _customReportWindow.SelectedContLoomList);
                         cwob.ContinuityReportGeneration(ContinuityFolder, ContinuityCompFolder, ElecCollection);
                         // Update loading message on the UI thread
@@ -1121,11 +1131,13 @@ namespace Electre_Customize_DotNet.MainOperation
                         {
                             _loadingForm.LbsLoadinMessag = "Continuity Report Generated";
                         });
+                        PerfDiagnostics.StopAndLog(__swCont, "ReportGeneration", "Continuity", ("SelectedLoomCount", _customReportWindow.SelectedContLoomList.Count), ("InputCount", ElecCollection?.Count ?? 0));
                     }
 
                     // Megger
                     if (_customReportWindow.SelectedMeggerLoomList.Count > 0)
                     {
+                        var __swMegger = PerfDiagnostics.StartTimer();
                         MeggerSchedulesheet(modExcelInst, _customReportWindow.SelectedMeggerLoomList, MeggerFolder, ElecCollection);
 
                         // Update loading message on the UI thread
@@ -1133,11 +1145,13 @@ namespace Electre_Customize_DotNet.MainOperation
                         {
                             _loadingForm.LbsLoadinMessag = "Megger Report Generated";
                         });
+                        PerfDiagnostics.StopAndLog(__swMegger, "ReportGeneration", "Megger", ("SelectedLoomCount", _customReportWindow.SelectedMeggerLoomList.Count));
                     }
 
                     // Power On
                     if (_customReportWindow.powerOnProjectList)
                     {
+                        var __swPowerOn = PerfDiagnostics.StartTimer();
                         CwithBCReportRow = 0;
                         Logging.Info("Power On report Started");
                         string workbookPath = modExcelInst.CreateNewWorkbook("PowerOn_Project", "PowerOn", ConfigurationManager.AppSettings["PowerOnFolder"]);
@@ -1157,17 +1171,19 @@ namespace Electre_Customize_DotNet.MainOperation
                         });
 
                         Logging.Info("PowerOn_Project report Completed");
+                        PerfDiagnostics.StopAndLog(__swPowerOn, "ReportGeneration", "PowerOn_Project", ("InputCount", ElecCollection_All?.Count ?? 0));
                     }
 
                     if (_customReportWindow.SelectedPanelList.Count > 0)
                     {
+                        var __swPowerOnPanel = PerfDiagnostics.StartTimer();
                         string fullPath = Path.Combine(templpath, PowerOnFolder);
                         //DeleteExistingFiles(fullPath);
 
                         var SelectedPanels = _customReportWindow.SelectedPanelList;
                         foreach (var panel in SelectedPanels)
                         {
-                            string sanitizedSheetName = SanitizeSheetName(panel);
+                            string sanitizedSheetName = SheetNames.Sanitize(panel);
                             string workbookPath = modExcelInst.CreateNewWorkbook($"PowerOn_Panel_{panel}", $"Panel_{sanitizedSheetName}", PowerOnFolder);
 
                             if (!modExcelInst.CreatePowerOnReportHeader(workbookPath))
@@ -1186,6 +1202,7 @@ namespace Electre_Customize_DotNet.MainOperation
                         {
                             _loadingForm.LbsLoadinMessag = $"Power On Reports Generated";
                         });
+                        PerfDiagnostics.StopAndLog(__swPowerOnPanel, "ReportGeneration", "PowerOn_Panel", ("SelectedPanelCount", SelectedPanels.Count));
                     }
 
                     // panel drawing
@@ -1254,6 +1271,7 @@ namespace Electre_Customize_DotNet.MainOperation
                     // Panel Schedules Cable List
                     if (_customReportWindow.SelectedLoomListPanelDwgCL.Count > 0)
                     {
+                        var __swPanelCL = PerfDiagnostics.StartTimer();
                         string fullPath = Path.Combine(templpath, PanelLoomFolderCL);
                         string fullPathBundle = Path.Combine(templpath, PanelLoomFolderBundleCL);
 
@@ -1270,10 +1288,12 @@ namespace Electre_Customize_DotNet.MainOperation
                         {
                             _loadingForm.LbsLoadinMessag = "Looms Report Generated";
                         });
+                        PerfDiagnostics.StopAndLog(__swPanelCL, "ReportGeneration", "PanelSchedules_CableList", ("SelectedLoomCount", _customReportWindow.SelectedLoomListPanelDwgCL.Count));
                     }
 
                     if (_customReportWindow.SelectedSheetListPanelDwgCL.Count > 0)
                     {
+                        var __swPanelSheet = PerfDiagnostics.StartTimer();
                         string fullPath = Path.Combine(templpath, PanelSheetFolderCL);
                         //DeleteExistingFiles(fullPath);
 
@@ -1284,11 +1304,13 @@ namespace Electre_Customize_DotNet.MainOperation
                         {
                             _loadingForm.LbsLoadinMessag = "Sheet Report Generated";
                         });
+                        PerfDiagnostics.StopAndLog(__swPanelSheet, "ReportGeneration", "PanelSchedules_Sheet", ("SelectedSheetCount", _customReportWindow.SelectedSheetListPanelDwgCL.Count));
                     }
 
                     // Panel Schedules Continuity
                     if (_customReportWindow.SelectedLoomListPanelDwgCont.Count > 0)
                     {
+                        var __swPanelCont = PerfDiagnostics.StartTimer();
                         ContinuityWOBreakdown cwob = new ContinuityWOBreakdown(modExcelInst, _customReportWindow.SelectedLoomListPanelDwgCont);
                         cwob.ContinuityReportGeneration(PanelContinuityFolder, PanelContinuityCompFolder, PanelDrawingSchedulesWindow.filteredSheetCollection);
                         // Update loading message on the UI thread
@@ -1296,11 +1318,13 @@ namespace Electre_Customize_DotNet.MainOperation
                         {
                             _loadingForm.LbsLoadinMessag = "Continuity Report Generated";
                         });
+                        PerfDiagnostics.StopAndLog(__swPanelCont, "ReportGeneration", "PanelSchedules_Continuity", ("SelectedLoomCount", _customReportWindow.SelectedLoomListPanelDwgCont.Count));
                     }
 
                     // Panel Schedules Megger
                     if (_customReportWindow.SelectedLoomListPanelDwgMeg.Count > 0)
                     {
+                        var __swPanelMeg = PerfDiagnostics.StartTimer();
                         MeggerSchedulesheet(modExcelInst, _customReportWindow.SelectedLoomListPanelDwgMeg, PanelMeggerFolder, PanelDrawingSchedulesWindow.filteredSheetCollection);
 
                         // Update loading message on the UI thread
@@ -1308,11 +1332,13 @@ namespace Electre_Customize_DotNet.MainOperation
                         {
                             _loadingForm.LbsLoadinMessag = "Megger Report Generated";
                         });
+                        PerfDiagnostics.StopAndLog(__swPanelMeg, "ReportGeneration", "PanelSchedules_Megger", ("SelectedLoomCount", _customReportWindow.SelectedLoomListPanelDwgMeg.Count));
                     }
 
                     // Panel Schedules Power On
                     if (_customReportWindow.SelectedSheetListPanelDwgPower.Count > 0)
                     {
+                        var __swPanelPower = PerfDiagnostics.StartTimer();
                         string fullPath = Path.Combine(templpath, PanelPowerOnFolder);
                         if (!Directory.Exists(fullPath))
                         {
@@ -1323,7 +1349,7 @@ namespace Electre_Customize_DotNet.MainOperation
                         var SelectedSheets = _customReportWindow.SelectedSheetListPanelDwgPower;
                         foreach (var sheet in SelectedSheets)
                         {
-                            string sanitizedSheetName = SanitizeSheetName(sheet);
+                            string sanitizedSheetName = SheetNames.Sanitize(sheet);
                             string workbookPath = modExcelInst.CreateNewWorkbook($"PowerOn_Sheet_{sheet}", $"{sanitizedSheetName}", PanelPowerOnFolder);
 
                             if (!modExcelInst.CreatePowerOnReportHeader(workbookPath))
@@ -1331,13 +1357,14 @@ namespace Electre_Customize_DotNet.MainOperation
                                 Logging.Error($"Failed to create the PowerOn Report Header for Sheet {sheet}");
                             }
                             PowerOnReport powerOn = new PowerOnReport(modExcelInst, new List<string> { sheet });
-                            powerOn.PowerOnReportGeneration_PanelDWG();                           
+                            powerOn.PowerOnReportGeneration_PanelDWG();
                         }
 
                         _loadingForm.Invoke(() =>
                         {
                             _loadingForm.LbsLoadinMessag = $"Power On Reports Generated";
                         });
+                        PerfDiagnostics.StopAndLog(__swPanelPower, "ReportGeneration", "PanelSchedules_PowerOn", ("SelectedSheetCount", SelectedSheets.Count));
                     }
                     #endregion
 
@@ -1354,89 +1381,71 @@ namespace Electre_Customize_DotNet.MainOperation
             }
         }
 
-        public static void DeleteExistingFiles(string directoryPath)
-        {
-            if (!Directory.Exists(directoryPath))
-            {
-                Logging.Warning("Directory does not exist: " + directoryPath);
-                return;
-            }
-
-            string[] extensionsToDelete = { ".xls", ".xlsx", ".txt", ".csv" };
-
-            try
-            {
-                var files = Directory.GetFiles(directoryPath)
-                                     .Where(file => extensionsToDelete.Contains(Path.GetExtension(file), StringComparer.OrdinalIgnoreCase));
-
-                foreach (var file in files)
-                {
-                    try
-                    {
-                        File.Delete(file);
-                        Logging.Info("Deleted: " + file);
-                    }
-                    catch (Exception ex)
-                    {
-                        Logging.Error($"Error deleting file {file}: {ex.Message}");
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Logging.Error($"Failed to retrieve files: {ex.Message}");
-            }
-        }
-
         // This method generates Excel reports for sheets in Cable List.
         private void sheetsReportWireList(modExcel modExcelInst, List<string> selectedSheetList, string sheetFolderPath)
         {
             try
             {
                 //ElectreObject E17;
-                object[,] arrCustomLoom = new object[arrFT_CwithBC.GetUpperBound(0), 10];
+                // The buffer used to be allocated at the full height of the project array for every sheet. It now
+                // only grows to this sheet's rows (+ blank rows, see RowBuffer), capped at that same height.
+                int maxBufferRows = arrFT_CwithBC.GetUpperBound(0);
                 Logging.Info("sheet wise Report generation Started");
 
-                int z = 0;
+                ColumnRowIndex rowsBySheet = null;   // built on first use, from column 9 (sheet name)
+                object rowsBySheetLock = new object();
 
-                //foreach (string s in _mainForm.ListSHEET)
-                foreach (string s in selectedSheetList)
+                // Every sheet is its own workbook. With App.config ExcelWorkerCount > 1 several Excel instances work through the
+                // sheets at the same time; the default (1) is the old sequential loop on the shared instance. Each worker owns its
+                // row buffer (the same reuse / reset rules as before, per worker).
+                ExcelParallel.ForEach(selectedSheetList, modExcelInst, () => new WirelistBufferState(10), (excel, s, buffer) =>
                 {
                     try
                     {
                         Logging.Info($"{s} Sheet report Started");
                        // bool appendPage = false;
 
-                        for (int y = 0; y < arrFT_CwithBCProject.GetLength(0); y++)
+                        ColumnRowIndex index;
+                        lock (rowsBySheetLock)
                         {
-                            if (arrFT_CwithBCProject[y, 9] != null)
+                            rowsBySheet ??= new ColumnRowIndex(arrFT_CwithBCProject, 9);
+                            index = rowsBySheet;
+                        }
+                        var sheetRows = index.RowsFor(s);
+                        RowBuffer.EnsureCapacity(ref buffer.Rows, buffer.Z + sheetRows.Count, maxBufferRows);
+
+                        foreach (int y in sheetRows)
+                        {
+                            // Copy elements from arrFT_CwithBCProject to arrCustomLoom
+                            for (int x = 0; x < 9; x++)
                             {
-                                if (arrFT_CwithBCProject[y, 9].ToString() == s)
-                                {
-                                    // Copy elements from arrFT_CwithBCProject to arrCustomLoom
-                                    for (int x = 0; x < 9; x++)
-                                    {
-                                        arrCustomLoom[z, x] = arrFT_CwithBCProject[y, x];
-                                    }
-                                    arrCustomLoom[z, 9] = arrFT_CwithBCProject[y, 12];
-                                    z++;
-                                }
+                                buffer.Rows[buffer.Z, x] = arrFT_CwithBCProject[y, x];
                             }
+                            buffer.Rows[buffer.Z, 9] = arrFT_CwithBCProject[y, 12];
+                            buffer.Z++;
                         }
 
-                        string sheetName = SanitizeSheetName(s);
+                        string sheetName = SheetNames.Sanitize(s);
                         // string workbookPath = modExcelInst.CreateNewWorkbook($"{s}_SHEET_Wirelist", sheetName, ConfigurationManager.AppSettings["SheetFolder"]);
-                        string workbookPath = modExcelInst.CreateNewWorkbook($"{s}_SHEET_Wirelist", sheetName, sheetFolderPath);
-
-                        if (!modExcelInst.CreateWirelistReportHeader(workbookPath))
+                        if (ExcelSwitches.OnePassWirelistWorkbook)
                         {
-                            Logging.Error($"Error Sheet report Header {s}");
+                            excel.WriteWirelistWorkbookOnePass($"{s}_SHEET_Wirelist", sheetName, sheetFolderPath, buffer.Rows, maxBufferRows);
                         }
+                        else
+                        {
+                            string workbookPath = excel.CreateNewWorkbook($"{s}_SHEET_Wirelist", sheetName, sheetFolderPath);
 
-                        modExcelInst.AppendToExcel(arrCustomLoom);
-                        modExcelInst.SortWirelistWireNumber(2, arrCustomLoom.GetUpperBound(0) + 1);
-                        z = 0;
-                        arrCustomLoom = new object[arrFT_CwithBC.GetUpperBound(0), 10];
+                            if (!excel.CreateWirelistReportHeader(workbookPath))
+                            {
+                                Logging.Error($"Error Sheet report Header {s}");
+                            }
+
+                            excel.AppendToExcel(buffer.Rows, saveWorkbook: false);
+                            excel.SortWirelistWireNumber(2, maxBufferRows, saveBeforeClose: false);
+                        }
+                        // same request as before (the full height); SortWirelistWireNumber trims it to the written rows
+                        buffer.Z = 0;
+                        buffer.Rows = new object[0, 10];
                         Logging.Info($"{s} Sheet report Completed");
                     }
                     catch (Exception ex)
@@ -1444,7 +1453,7 @@ namespace Electre_Customize_DotNet.MainOperation
                         MessageBox.Show($"{s}:{ex.Message}");
                         Logging.Error($"{s}:{ex.Message}");
                     }
-                }
+                });
             }
 
             catch (Exception ex)
@@ -1453,26 +1462,18 @@ namespace Electre_Customize_DotNet.MainOperation
             }
         }
 
-        private string SanitizeSheetName(string sheetName)
-        {
-            // Remove invalid characters
-            string invalidChars = new string(Path.GetInvalidFileNameChars()) + @":\/?*[]";
-            foreach (char c in invalidChars)
-            {
-                sheetName = sheetName.Replace(c.ToString(), "");
-            }
-
-            // Trim to 31 characters
-            return sheetName.Length > 31 ? sheetName.Substring(0, 31) : sheetName;
-        }
-
         //this method gennerates Excel reports for project WireList
         private void WireListReport(modExcel modExcelInst)
         {
-            object[,] arrCustomLoom = new object[arrFT_CwithBCProject.Length, 10];
+            // The buffer used to be arrFT_CwithBCProject.Length rows (rows x columns!) of which only the populated prefix was ever written
+            // (AppendToExcel stops at the first block of three blank rows). RowBuffer.EquivalentHeight gives the smallest height that
+            // makes AppendToExcel write exactly the same rows.
+            int sourceRows = arrFT_CwithBCProject.GetLength(0);
+            int bufferRows = RowBuffer.EquivalentHeight(arrFT_CwithBCProject, arrFT_CwithBCProject.Length);
+            object[,] arrCustomLoom = new object[bufferRows, 10];
             int Z = 0;
 
-            for (int Y = 0; Y < arrFT_CwithBCProject.GetLength(0); Y++)
+            for (int Y = 0; Y < Math.Min(sourceRows, bufferRows); Y++)
             {
                 // Check if the value at position (Y, 9) matches the selected item in frmMain.listLOOM at index S
                 for (int X = 0; X < 9; X++)  // Copy elements from arrFT_CwithBCProject to arrCustomLoom
@@ -1484,8 +1485,8 @@ namespace Electre_Customize_DotNet.MainOperation
 
                 Z++;
             }
-            modExcelInst.AppendToExcel(arrCustomLoom);
-            modExcelInst.SortWirelistWireNumber(2, arrFT_CwithBCProject.GetLength(0) + 1);
+            modExcelInst.AppendToExcel(arrCustomLoom, saveWorkbook: false);
+            modExcelInst.SortWirelistWireNumber(2, arrFT_CwithBCProject.GetLength(0) + 1, saveBeforeClose: false);
 
         }
 
@@ -1496,44 +1497,64 @@ namespace Electre_Customize_DotNet.MainOperation
             {
                 ElectreObject E17;
 
-                object[,] arrCustomLoom = new object[arrFT_CwithBCProject.Length, 10];
+                // First component: the original buffer was arrFT_CwithBCProject.Length rows; later components got
+                // arrFT_CwithBC.GetUpperBound(0) rows. Same growth rule as the sheet reports, with the cap of each case.
+                int maxBufferRowsFirst = arrFT_CwithBCProject.Length;
+                int maxBufferRowsNext = arrFT_CwithBC.GetUpperBound(0);
 
-                int z = 0;
+                ColumnRowIndex rowsByComponent = null;   // built on first use, from column 0 (component / connector)
+                object rowsByComponentLock = new object();
 
+                // Every component is its own workbook. With App.config ExcelWorkerCount > 1 several Excel instances work through the
+                // components at the same time; the default (1) is the old sequential loop on the shared instance. Each worker owns
+                // its row buffer and its height cap (first item: ...First, afterwards: ...Next), like the old locals.
                 //foreach (string s in _mainForm.ListEQU2)
-                foreach (string s in componentList)
+                ExcelParallel.ForEach(componentList, modExcelInst, () => new WirelistBufferState(10, maxBufferRowsFirst), (excel, s, buffer) =>
                 {
                     try
                     {
                         Logging.Info($"{s} Equipment report Started");
-                        for (int y = 0; y < arrFT_CwithBC.GetLength(0); y++)
+
+                        ColumnRowIndex index;
+                        lock (rowsByComponentLock)
                         {
-                            if (arrFT_CwithBC[y, 0] != null)
+                            rowsByComponent ??= new ColumnRowIndex(arrFT_CwithBC, 0);
+                            index = rowsByComponent;
+                        }
+                        var componentRows = index.RowsFor(s);
+                        RowBuffer.EnsureCapacity(ref buffer.Rows, buffer.Z + componentRows.Count, buffer.MaxRows);
+
+                        foreach (int y in componentRows)
+                        {
+                            // Copy elements from arrFT_CwithBC to arrCustomLoom
+                            for (int x = 0; x < 9; x++)
                             {
-                                if (arrFT_CwithBC[y, 0].ToString() == s)
-                                {
-                                    // Copy elements from arrFT_CwithBC to arrCustomLoom
-                                    for (int x = 0; x < 9; x++)
-                                    {
-                                        arrCustomLoom[z, x] = arrFT_CwithBC[y, x];
-                                    }
-                                    arrCustomLoom[z, 9] = arrFT_CwithBC[y, 10];
-                                    z++;
-                                }
+                                buffer.Rows[buffer.Z, x] = arrFT_CwithBC[y, x];
                             }
+                            buffer.Rows[buffer.Z, 9] = arrFT_CwithBC[y, 10];
+                            buffer.Z++;
                         }
 
-                        string workbookPath = modExcelInst.CreateNewWorkbook($"{s}_{fileSuffixName}", s, FolderName);
-
-                        if (!modExcelInst.CreateWirelistReportHeader(workbookPath))
+                        if (ExcelSwitches.OnePassWirelistWorkbook)
                         {
-                            Logging.Error($"Error Report Header {s}");
+                            excel.WriteWirelistWorkbookOnePass($"{s}_{fileSuffixName}", s, FolderName, buffer.Rows, buffer.MaxRows);
                         }
+                        else
+                        {
+                            string workbookPath = excel.CreateNewWorkbook($"{s}_{fileSuffixName}", s, FolderName);
 
-                        modExcelInst.AppendToExcel(arrCustomLoom);
-                        modExcelInst.SortWirelistWireNumber(2, arrCustomLoom.GetUpperBound(0) + 1);
-                        z = 0;
-                        arrCustomLoom = new object[arrFT_CwithBC.GetUpperBound(0), 10];
+                            if (!excel.CreateWirelistReportHeader(workbookPath))
+                            {
+                                Logging.Error($"Error Report Header {s}");
+                            }
+
+                            excel.AppendToExcel(buffer.Rows, saveWorkbook: false);
+                            excel.SortWirelistWireNumber(2, buffer.MaxRows, saveBeforeClose: false);
+                        }
+                        // same request as before (the full height); SortWirelistWireNumber trims it to the written rows
+                        buffer.Z = 0;
+                        buffer.Rows = new object[0, 10];
+                        buffer.MaxRows = maxBufferRowsNext;
                         Logging.Info($"{s} Equipment report Completed");
                     }
                     catch (Exception ex)
@@ -1544,7 +1565,7 @@ namespace Electre_Customize_DotNet.MainOperation
 
                     }
 
-                }
+                });
             }
 
             catch (Exception ex)
@@ -1559,59 +1580,63 @@ namespace Electre_Customize_DotNet.MainOperation
         {
             try
             {
+                var loomRows = LoomRowIndex.Build(arrFT_CwithBCProject, selectedSheets);
+
+                // Every loom is its own workbook: with App.config ExcelWorkerCount > 1 several Excel instances work through the looms at
+                // the same time; the default (1) is the old sequential loop on the shared instance.
                 //foreach (string loomName in _mainForm.ListLOOM)
-                foreach (string loomName in selectedLoomList)
+                ExcelParallel.ForEach(selectedLoomList, modExcelInst, (excel, loomName) =>
                 {
                     try
                     {
                         Logging.Info($"{loomName} Loom report without template Started");
-                        object[,] arrCustomLoom = new object[arrFT_CwithBCProject.Length, 14];
+                        // Sized to exactly this loom's rows. It used to be arrFT_CwithBCProject.Length rows (rows x columns)
+                        // x 14 columns for EVERY loom - hundreds of MB of empty array that the loops below then scanned.
+                        // Only the filled rows were ever used, and the loops skip empty rows, so the result is the same.
+                        loomRows.TryGetRows(loomName, out var matchingRows);
+                        object[,] arrCustomLoom = new object[matchingRows?.Count ?? 0, 14];
                         int Z = 0;
 
-                        for (int Y = 0; Y < arrFT_CwithBCProject.GetLength(0); Y++)
+                        if (matchingRows != null)
                         {
-                            // ✅ New filter: if sheet filtering is active, skip rows not in selected sheets
-                            string sheetName = arrFT_CwithBCProject[Y, 7]?.ToString(); // adjust index if sheet column is elsewhere
-                            if (selectedSheets != null && !selectedSheets.Contains(sheetName))
+                            foreach (var (Y, isFrom) in matchingRows)
                             {
-                                continue;
-                            }
-                            // Check if the value at position (Y, 9) matches the selected item in frmMain.listLOOM at index S
-                            if (arrFT_CwithBCProject[Y, 8]?.ToString() == loomName)  // Arrays are zero-indexed in C#
-                            {
-                                for (int X = 0; X < 9; X++)  // Copy elements from arrFT_CwithBCProject to arrCustomLoom
+                                if (isFrom)  // matches the original's arrFT_CwithBCProject[Y, 8] == loomName branch
                                 {
-                                    arrCustomLoom[Z, X] = arrFT_CwithBCProject[Y, X];
+                                    for (int X = 0; X < 9; X++)  // Copy elements from arrFT_CwithBCProject to arrCustomLoom
+                                    {
+                                        arrCustomLoom[Z, X] = arrFT_CwithBCProject[Y, X];
+                                    }
+
+                                    arrCustomLoom[Z, 9] = arrFT_CwithBCProject[Y, 12];
+                                    arrCustomLoom[Z, 10] = arrFT_CwithBCProject[Y, 13];
+
+                                    Z++;
                                 }
-
-                                arrCustomLoom[Z, 9] = arrFT_CwithBCProject[Y, 12];
-                                arrCustomLoom[Z, 10] = arrFT_CwithBCProject[Y, 13];
-
-                                Z++;
-                            }
-                            else if (arrFT_CwithBCProject[Y, 10]?.ToString() == loomName)
-                            {
-                                for (int X = 0; X < 9; X++)  // Copy elements from arrFT_CwithBCProject to arrCustomLoom
+                                else  // matches the original's arrFT_CwithBCProject[Y, 10] == loomName branch
                                 {
-                                    arrCustomLoom[Z, X] = arrFT_CwithBCProject[Y, X];
+                                    for (int X = 0; X < 9; X++)  // Copy elements from arrFT_CwithBCProject to arrCustomLoom
+                                    {
+                                        arrCustomLoom[Z, X] = arrFT_CwithBCProject[Y, X];
+                                    }
+
+                                    arrCustomLoom[Z, 9] = arrFT_CwithBCProject[Y, 12];
+                                    arrCustomLoom[Z, 10] = arrFT_CwithBCProject[Y, 13];
+                                    // Swap values as in the VBA code
+                                    string tempFromConnector = arrCustomLoom[Z, 0]?.ToString();
+                                    string tempFromPin = arrCustomLoom[Z, 1]?.ToString();
+
+                                    arrCustomLoom[Z, 0] = arrCustomLoom[Z, 2];  // Swap position 1 with 3
+                                    arrCustomLoom[Z, 1] = arrCustomLoom[Z, 3];  // Swap position 2 with 4
+                                    arrCustomLoom[Z, 2] = tempFromConnector;
+                                    arrCustomLoom[Z, 3] = tempFromPin;
+
+                                    // Set specific columns with values from arrFT_CwithBCProject
+                                    arrCustomLoom[Z, 7] = arrFT_CwithBCProject[Y, 9];
+                                    arrCustomLoom[Z, 8] = arrFT_CwithBCProject[Y, 10];
+
+                                    Z++;
                                 }
-
-                                arrCustomLoom[Z, 9] = arrFT_CwithBCProject[Y, 12];
-                                arrCustomLoom[Z, 10] = arrFT_CwithBCProject[Y, 13];
-                                // Swap values as in the VBA code
-                                string tempFromConnector = arrCustomLoom[Z, 0]?.ToString();
-                                string tempFromPin = arrCustomLoom[Z, 1]?.ToString();
-
-                                arrCustomLoom[Z, 0] = arrCustomLoom[Z, 2];  // Swap position 1 with 3
-                                arrCustomLoom[Z, 1] = arrCustomLoom[Z, 3];  // Swap position 2 with 4
-                                arrCustomLoom[Z, 2] = tempFromConnector;
-                                arrCustomLoom[Z, 3] = tempFromPin;
-
-                                // Set specific columns with values from arrFT_CwithBCProject
-                                arrCustomLoom[Z, 7] = arrFT_CwithBCProject[Y, 9];
-                                arrCustomLoom[Z, 8] = arrFT_CwithBCProject[Y, 10];
-
-                                Z++;
                             }
                         }
 
@@ -1637,24 +1662,9 @@ namespace Electre_Customize_DotNet.MainOperation
                                 loomSortList.Add(loomObject);
                             }
                         }
-                        loomSortList.Distinct().ToList();
 
                         // LINQ query to exclude groups that not start with an alphabet
-                        var groupnumbers = loomSortList
-                                        .Where(x => !string.IsNullOrEmpty(x.Group) && Regex.IsMatch(x.Group, @"^[A-Za-z]"))
-                                        .Select(x => new { x.Group, x.WireCode })
-                                        .ToList();
-
-                        // ✅ Regex pattern to match valid cable types (numbers with _, - or just digits)
-                        Regex validPattern = new Regex(@"^[\dA-Za-z_-]+$");
-
-                        var otherCableTypes = loomSortList
-                                        .Where(x => !string.IsNullOrEmpty(x.Group) && !validPattern.IsMatch(x.Group))
-                                        .Select(x => new { x.Group, x.WireCode })
-                                        .ToList();
-
-                        // Combine both lists
-                        var combinedList = groupnumbers.Concat(otherCableTypes).ToList();
+                        var combinedList = LoomGroupRules.FindIncorrectGroups(loomSortList, x => x.Group, x => x.WireCode);
 
                         if (combinedList.Count > 0)
                         {
@@ -1672,42 +1682,9 @@ namespace Electre_Customize_DotNet.MainOperation
                             Null_Group_IDs.Info($" Wire Code: {nullgroup.WireCode}, Loom Name: {nullgroup.Bundle} , Sheet Name: {nullgroup.Sheet}");
                         }
 
-                        // if group number start with a letters
-                        var filteredLoomSortList = loomSortList
-                      .Where(x => !Regex.IsMatch(x.Group, @"^[A-Za-z]")) // Exclude groups starting with a letter
-                        .ToList();
+                        // Drop groups starting with a letter, then order by group number / letters / sub-number / wire code
+                        loomSortList = LoomGroupRules.FilterAndSort(loomSortList, x => x.Group, x => x.WireCode);
 
-                        loomSortList = filteredLoomSortList
-                      .OrderBy(x =>
-                      {
-                          // Extract main number from the beginning of the string
-                          var match = Regex.Match(x.Group, @"^(\d+)");
-                          return match.Success ? int.Parse(match.Groups[1].Value) : int.MaxValue;
-                      })
-                        .ThenBy(x =>
-                        {
-                            // Extract alphabetical part after the number (case-insensitive)
-                            var match = Regex.Match(x.Group, @"^(\d+)([A-Za-z]*)");
-                            return match.Success ? match.Groups[2].Value.ToLower() : "";
-                        })
-                     .ThenBy(x =>
-                     {
-                         // Extract sub-number after _ or - (default to 0 if not found)
-                         var parts = Regex.Split(x.Group.Replace('_', '-'), "[-_]");
-                         return parts.Length > 1 && int.TryParse(parts[1], out int subNumber) ? subNumber : 0;
-                     })
-                        .ThenBy(x => x.WireCode)  // Sort by WireCode last
-                      .ToList();
-
-                        int loomRowCount = 0;
-
-                        for (int i = 0; i < arrCustomLoom.GetLength(0); i++)
-                        {
-                            if (arrCustomLoom[i, 0] != null && arrCustomLoom[i, 4] != null)
-                            {
-                                loomRowCount++;
-                            }
-                        }
                         object[,] arrFinalReportLOOM = new object[loomSortList.Count, 11];
                         int m = 0;
                         for (int i = 0; i < loomSortList.Count; i++)
@@ -1727,14 +1704,15 @@ namespace Electre_Customize_DotNet.MainOperation
                         }
 
                         // string workbookPath = modExcelInst.CreateNewWorkbook($"{loomName}_Loom_Wirelist", loomName, ConfigurationManager.AppSettings["LoomFolder"]);
-                        string workbookPath = modExcelInst.CreateNewWorkbook($"{loomName}_Loom_Wirelist", loomName, loomFolderPath);
+                        string workbookPath = excel.CreateNewWorkbook($"{loomName}_Loom_Wirelist", loomName, loomFolderPath);
 
-                        if (!modExcelInst.CreateloomlistReportHeader(workbookPath))
+                        if (!excel.CreateloomlistReportHeader(workbookPath))
                         {
                             Logging.Error($"Error Sheet report Header {loomName}");
                         }
 
-                        modExcelInst.AppendToExcel(arrFinalReportLOOM);
+                        excel.AppendToExcel(arrFinalReportLOOM);
+                        excel.CloseReportWorkbookWithoutSaving();   // saved by AppendToExcel; it used to stay open until Excel quit (one per loom)
                         // modExcelInst.SortWirelistWireNumber3(2, arrFinalReportLOOM.GetUpperBound(0) + 1);
                         Logging.Info($"{loomName} Loom report without Template Completed");
                     }
@@ -1743,7 +1721,7 @@ namespace Electre_Customize_DotNet.MainOperation
                         MessageBox.Show($"{loomName}:incorrect cable group id");
                         Logging.Error($"{loomName}: {ex.Message}");
                     }
-                }
+                });
             }
             catch (Exception ex)
             {
@@ -1760,8 +1738,9 @@ namespace Electre_Customize_DotNet.MainOperation
 
             try
             {
-                List<string> allspecialcables = new List<string>();
-                allspecialcables = ElecCollection.Where(p => p.CableType == "X").Select(p => p.Tag7).ToList();
+                // Only ever used via .Contains() below (inside a loom-rows loop, itself inside the
+                // per-loom loop), so a HashSet avoids an O(allspecialcables.Count) scan per row.
+                var allspecialcables = new HashSet<string>(ElecCollection.Where(p => p.CableType == "X").Select(p => p.Tag7));
 
                 List<string> gaugeList = ElecCollection
                 .Select(p => p.Gauge)
@@ -1777,44 +1756,49 @@ namespace Electre_Customize_DotNet.MainOperation
                 }
 
 
+                var loomRows = LoomRowIndex.Build(arrFT_CwithBCProject, selectedSheets);
+
+                // Every loom is its own workbook: with App.config ExcelWorkerCount > 1 several Excel instances work through the looms at
+                // the same time; the default (1) is the old sequential loop on the shared instance.
                 //foreach (string loomName in _mainForm.ListLOOM)
-                foreach (string loomName in selectedLoomList)
+                ExcelParallel.ForEach(selectedLoomList, modExcelInst, (excel, loomName) =>
                 {
                     try
                     {
                         Logging.Info($"{loomName} Loom report Started");
-                        object[,] arrCustomLoom = new object[arrFT_CwithBCProject.Length, 14];
+                        // Sized to exactly this loom's rows. It used to be arrFT_CwithBCProject.Length rows (rows x columns)
+                        // x 14 columns for EVERY loom - hundreds of MB of empty array that the loops below then scanned.
+                        // Only the filled rows were ever used, and the loops skip empty rows, so the result is the same.
+                        loomRows.TryGetRows(loomName, out var matchingRows);
+                        object[,] arrCustomLoom = new object[matchingRows?.Count ?? 0, 14];
                         int Z = 0;
 
-                        for (int Y = 0; Y < arrFT_CwithBCProject.GetLength(0); Y++)
+                        if (matchingRows != null)
                         {
-                            // ✅ New filter: check sheet name if required
-                            string sheetName = arrFT_CwithBCProject[Y, 7]?.ToString(); // adjust index if needed
-                            if (selectedSheets != null && !selectedSheets.Contains(sheetName))
-                                continue;
-
-                            // Check if the value at position (Y, 9) matches the selected item in frmMain.listLOOM at index S
-                            if (arrFT_CwithBCProject[Y, 8]?.ToString() == loomName)  // Arrays are zero-indexed in C#
+                            foreach (var (Y, isFrom) in matchingRows)
                             {
-                                for (int X = 0; X < 13; X++)  // Copy elements from arrFT_CwithBCProject to arrCustomLoom
+                                if (isFrom)  // matches the original's arrFT_CwithBCProject[Y, 8] == loomName branch
                                 {
-                                    arrCustomLoom[Z, X] = arrFT_CwithBCProject[Y, X];
-                                }
-                                arrCustomLoom[Z, 13] = arrFT_CwithBCProject[Y, 13];
+                                    for (int X = 0; X < 13; X++)  // Copy elements from arrFT_CwithBCProject to arrCustomLoom
+                                    {
+                                        arrCustomLoom[Z, X] = arrFT_CwithBCProject[Y, X];
+                                    }
+                                    arrCustomLoom[Z, 13] = arrFT_CwithBCProject[Y, 13];
 
-                                Z++;
-                            }
-                            else if (arrFT_CwithBCProject[Y, 10]?.ToString() == loomName)
-                            {
-                                for (int X = 0; X < 9; X++)  // Copy elements from arrFT_CwithBCProject to arrCustomLoom
+                                    Z++;
+                                }
+                                else  // matches the original's arrFT_CwithBCProject[Y, 10] == loomName branch
                                 {
-                                    arrCustomLoom[Z, X] = arrFT_CwithBCProject[Y, X];
-                                }
-                                arrCustomLoom[Z, 9] = arrFT_CwithBCProject[Y, 12];
-                                arrCustomLoom[Z, 12] = arrFT_CwithBCProject[Y, 12];
-                                arrCustomLoom[Z, 13] = arrFT_CwithBCProject[Y, 13];
+                                    for (int X = 0; X < 9; X++)  // Copy elements from arrFT_CwithBCProject to arrCustomLoom
+                                    {
+                                        arrCustomLoom[Z, X] = arrFT_CwithBCProject[Y, X];
+                                    }
+                                    arrCustomLoom[Z, 9] = arrFT_CwithBCProject[Y, 12];
+                                    arrCustomLoom[Z, 12] = arrFT_CwithBCProject[Y, 12];
+                                    arrCustomLoom[Z, 13] = arrFT_CwithBCProject[Y, 13];
 
-                                Z++;
+                                    Z++;
+                                }
                             }
                         }
 
@@ -1891,34 +1875,9 @@ namespace Electre_Customize_DotNet.MainOperation
                             }
                         }
 
-                        loomSortList.Distinct().ToList();
 
-                        // if group number start with a letters
-                        var filteredLoomSortList = loomSortList
-                      .Where(x => !Regex.IsMatch(x.Group, @"^[A-Za-z]")) // Exclude groups starting with a letter
-                        .ToList();
-
-                        loomSortList = filteredLoomSortList
-                      .OrderBy(x =>
-                      {
-                          // Extract main number from the beginning of the string
-                          var match = Regex.Match(x.Group, @"^(\d+)");
-                          return match.Success ? int.Parse(match.Groups[1].Value) : int.MaxValue;
-                      })
-                        .ThenBy(x =>
-                        {
-                            // Extract alphabetical part after the number (case-insensitive)
-                            var match = Regex.Match(x.Group, @"^(\d+)([A-Za-z]*)");
-                            return match.Success ? match.Groups[2].Value.ToLower() : "";
-                        })
-                     .ThenBy(x =>
-                     {
-                         // Extract sub-number after _ or - (default to 0 if not found)
-                         var parts = Regex.Split(x.Group.Replace('_', '-'), "[-_]");
-                         return parts.Length > 1 && int.TryParse(parts[1], out int subNumber) ? subNumber : 0;
-                     })
-                        .ThenBy(x => x.WireCode)  // Sort by WireCode last
-                      .ToList();
+                        // Drop groups starting with a letter, then order by group number / letters / sub-number / wire code
+                        loomSortList = LoomGroupRules.FilterAndSort(loomSortList, x => x.Group, x => x.WireCode);
 
                         int loomRowCount = 0;
 
@@ -1979,7 +1938,7 @@ namespace Electre_Customize_DotNet.MainOperation
                         int LoomInitialRow = 8;
 
                         int LoomSheetRowRequired = 38;
-                        int NoLoomSheets = modExcelInst.GetNumberOfSheetsRequired(loomRowCount, LoomSheetRowRequired);
+                        int NoLoomSheets = ExcelRowRules.GetNumberOfSheetsRequired(loomRowCount, LoomSheetRowRequired);
 
                         //implementing Merge and demege.
                         int serialNo = 1;
@@ -1988,6 +1947,17 @@ namespace Electre_Customize_DotNet.MainOperation
                         int loomStartRowCount = 1;
                         int loomMergeEndRowCount = 1;
                         int listCount = 0;
+
+                        // The loop below re-ran a full .Where(WireName == ...).Count() scan over
+                        // loomSortList on every iteration to size each merge group - O(n) per
+                        // iteration, effectively O(n^2) overall for large looms. Precompute each
+                        // WireName's total occurrence count once instead.
+                        var wireNameCounts = new Dictionary<string, int>();
+                        foreach (var entry in loomSortList)
+                        {
+                            wireNameCounts.TryGetValue(entry.WireName, out int existing);
+                            wireNameCounts[entry.WireName] = existing + 1;
+                        }
 
                         do
                         {
@@ -2010,7 +1980,7 @@ namespace Electre_Customize_DotNet.MainOperation
                             arrFinalReportLOOM[listCount + 1, 15] = arrFinalReportLOOM[listCount + 1, 9];
                             arrFinalReportLOOM[listCount + 1, 14] = serialNo;
 
-                            int sameloomListCount = loomSortList.Where(e => e.WireName == loomMerge.WireName).ToList().Count;
+                            int sameloomListCount = wireNameCounts[loomMerge.WireName];
 
                             loomMergeEndRowCount = (listCount + sameloomListCount) % LoomSheetRowRequired;
 
@@ -2058,8 +2028,7 @@ namespace Electre_Customize_DotNet.MainOperation
                         }
 
                         // modExcelInst.GenerateHALReportFormat_CableList(arrFinalReportLOOM, loomName, NoLoomSheets, LoomSheetRowRequired, ConfigurationManager.AppSettings["BundleFolder"]);
-                        modExcelInst.GenerateHALReportFormat_CableList(arrFinalReportLOOM, loomName, NoLoomSheets, LoomSheetRowRequired, bundleFolderPath);
-                        arrCustomLoom = new object[arrFT_CwithBC.GetUpperBound(0), 9];
+                        excel.GenerateHALReportFormat_CableList(arrFinalReportLOOM, loomName, NoLoomSheets, LoomSheetRowRequired, bundleFolderPath);
                         Logging.Info($"{loomName} Loom report Completed");
                     }
                     catch (Exception ex)
@@ -2067,41 +2036,13 @@ namespace Electre_Customize_DotNet.MainOperation
                         MessageBox.Show($"{loomName}:incorrect cable group id");
                         Logging.Error($"{loomName}: {ex.Message}");
                     }
-                }
+                });
             }
             catch (Exception ex)
             {
                 Logging.Error(ex.Message);
                 MessageBox.Show("ModMain ## 07" + ex.Message);
             }
-        }
-
-        //this method return NERD value based on layerNumber
-        public static string layerAssign(string layerNuber)
-        {
-            string layerChar;
-
-            switch (layerNuber)
-            {
-                case "158":
-                    layerChar = "D";
-                    break;
-                case "152":
-                    layerChar = "R";
-                    break;
-                case "160":
-                case "154":
-                    layerChar = "N";
-                    break;
-                case "169":
-                    layerChar = "E";
-                    break;
-                default:
-                    layerChar = "";
-                    break;
-            }
-            return layerChar;
-
         }
 
         // this method generates Excel reports for Megger
@@ -2113,14 +2054,14 @@ namespace Electre_Customize_DotNet.MainOperation
 
             // var selectedLoomlistforMegger = _customReportWindow.SelectedMeggerLoomList;
 
-            var filteredData = filteredElecCollection.Where(e => selectedLoomlistforMegger.Contains(e.BundleName) && string.IsNullOrEmpty(e.NoMegger)).ToList();
+            var selectedLoomSetForMegger = new HashSet<string>(selectedLoomlistforMegger);
+            var filteredData = filteredElecCollection.Where(e => selectedLoomSetForMegger.Contains(e.BundleName) && string.IsNullOrEmpty(e.NoMegger)).ToList();
            // filteredData = filteredData.Where(e => string.IsNullOrEmpty(e.NoMegger)).ToList();            
 
             filteredData = filteredData.OrderByDescending(obj => obj.ComponentType == "EQU") // "EQU" first
                                                   .ThenBy(obj =>
-                                                      modMain.connectorMap.Keys.Any(suffix =>
-                                                          obj.ConnectorName.EndsWith($"_{suffix}", StringComparison.OrdinalIgnoreCase)
-                                                      ) ? 1 : 0 // if it matches a known connector suffix → 1 (comes later), else → 0 (comes first)
+                                                      EquConnectorMap.EndsWithUnderscoredKey(obj.ConnectorName)
+                                                      ? 1 : 0 // if it matches a known connector suffix → 1 (comes later), else → 0 (comes first)
                                                   )
                                                   .ThenBy(obj => obj.ConnectorName, StringComparer.OrdinalIgnoreCase)
                                                   .ThenBy(obj => obj.PinNumber, StringComparer.OrdinalIgnoreCase)
@@ -2135,7 +2076,7 @@ namespace Electre_Customize_DotNet.MainOperation
             try
             {
                 // Delete the existing text files in the Megger folder
-                DeleteExistingFiles(fullPathMeggerFolder);
+                ReportFolderCleaner.DeleteExistingFiles(fullPathMeggerFolder);
               /*  if (Directory.Exists(fullPathMeggerFolder))
                 {
                     List<string> existingFiles = Directory.GetFiles(fullPathMeggerFolder, "*.txt").ToList();
@@ -2189,7 +2130,7 @@ namespace Electre_Customize_DotNet.MainOperation
                         var sortedMatchedComponents = matchedComponents.OrderBy(kvp => kvp.Key, StringComparer.OrdinalIgnoreCase)
                                                                         .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
-                        object[,] arrCustomLoom_CC = ConvertDictionaryTo2DArray(sortedMatchedComponents);
+                        object[,] arrCustomLoom_CC = MeggerListConverters.ToWideArray(sortedMatchedComponents);
                         modExcelInst.AppendToExcelMegger(modExcelInst.ReportWS, arrCustomLoom_CC);
                     }
                     else if (sheet.Name == "Pin List")
@@ -2209,7 +2150,7 @@ namespace Electre_Customize_DotNet.MainOperation
                     }
                     else if (sheet.Name == "Exception")
                     {
-                        string[,] arrNoMegger = modExcelInst.convertNoMeggerObjto2dArray(ElecCollectionforNoMegger); // 
+                        string[,] arrNoMegger = MeggerListConverters.NoMeggerToArray(ElecCollectionforNoMegger); // 
                         modExcelInst.ReportWS3 = sheet;
                         modExcelInst.AppendToExcelMegger(modExcelInst.ReportWS3, arrNoMegger);
 
@@ -2232,25 +2173,27 @@ namespace Electre_Customize_DotNet.MainOperation
                     }
                     else if (proceedWithRemainingSheets && sheet.Name == "Megger" && arrContList != null)
                     {
-                        lowMeggerData = Convert2DArrayToList(arrContList); // populating lowMeggerData with Continuity data
+                        lowMeggerData = MeggerListConverters.ToLowMeggerLines(arrContList); // populating lowMeggerData with Continuity data
                         // filtering the filteredData based on only the Continuity (Source and destination) components
-                        filteredData = filteredData.Where(e => arrListOfContinuityComponents.Contains(e.ConnectorName)).ToList();
+                        // (HashSet snapshot instead of a List<string>.Contains scan per filteredData element)
+                        var continuityComponentsSet = new HashSet<string>(arrListOfContinuityComponents);
+                        filteredData = filteredData.Where(e => continuityComponentsSet.Contains(e.ConnectorName)).ToList();
                         MeggerSheet5(filteredData, reportsFolderPath);
 
                         // Add hyperlinks to Megger_*.txt
-                        AddHyperlinksToSheet(sheet, fullPathMeggerFolder, "Megger_");
+                        ExcelHyperlinks.AddTextFileLinks(sheet, fullPathMeggerFolder, "Megger_");
                     }
                     else if (proceedWithRemainingSheets && sheet.Name == "High Megger")
                     {
                         MeggerSheet6and7("High", reportsFolderPath);
                         // ✅ Add hyperlinks to HighMegger_*.txt
-                        AddHyperlinksToSheet(sheet, fullPathMeggerFolder, "HighMegger_");
+                        ExcelHyperlinks.AddTextFileLinks(sheet, fullPathMeggerFolder, "HighMegger_");
                     }
                     else if (proceedWithRemainingSheets && sheet.Name == "Low Megger")
                     {
                         MeggerSheet6and7("Low", reportsFolderPath);
                         // ✅ Add hyperlinks to LowMegger_*.txt
-                        AddHyperlinksToSheet(sheet, fullPathMeggerFolder, "LowMegger_");
+                        ExcelHyperlinks.AddTextFileLinks(sheet, fullPathMeggerFolder, "LowMegger_");
                     }
                 }
                 // Ensure the desired sheet is active before final save
@@ -2265,53 +2208,6 @@ namespace Electre_Customize_DotNet.MainOperation
             {
                 MessageBox.Show("modMain ##007: " + ex.Message);
             }
-        }
-
-        private void AddHyperlinksToSheet(Worksheet sheet, string folderPath, string filePrefix)
-        {
-            string[] filePaths = Directory.GetFiles(folderPath, $"{filePrefix}*.txt");
-            int row = 1;
-
-            foreach (string file in filePaths.OrderBy(f => f))
-            {
-                string fileName = Path.GetFileName(file);
-                string displayText = $"Refer to {fileName} - Click to Open";
-
-                Range hyperlinkCell = sheet.Cells[row, 1]; // Column A
-                sheet.Columns[1].ColumnWidth = 40;
-
-                sheet.Hyperlinks.Add(hyperlinkCell, file, Type.Missing, Type.Missing, displayText);
-                hyperlinkCell.Interior.Color = System.Drawing.ColorTranslator.ToOle(System.Drawing.Color.Yellow);
-                hyperlinkCell.Font.Bold = true;
-
-                row++;
-            }
-        }
-
-        public static List<string> Convert2DArrayToList(string[,] arrContList)
-        {
-            var result = new List<string>();
-
-            int rows = arrContList.GetLength(0);
-
-            for (int i = 0; i < rows; i++)
-            {
-                string connector1 = arrContList[i, 0];
-                string pin1 = arrContList[i, 1];
-                string connector2 = arrContList[i, 2];
-                string pin2 = arrContList[i, 3];
-                if (string.IsNullOrWhiteSpace(connector1) ||
-                    string.IsNullOrWhiteSpace(pin1) ||
-                    string.IsNullOrWhiteSpace(connector2) ||
-                    string.IsNullOrWhiteSpace(pin2))
-                {
-                    continue;
-                }
-                string resultLine = $"{connector1};{pin1};{connector2};{pin2};Low Megger";
-                result.Add(resultLine);
-            }
-
-            return result;
         }
 
         /*  public void MeggerSchedulesheetold(modExcel modExcelInst)
@@ -2506,7 +2402,7 @@ namespace Electre_Customize_DotNet.MainOperation
                               }
                           }
 
-                          arrCustomLoom = ConvertDictionaryTo2DArray(matchedComponents);
+                          arrCustomLoom = MeggerListConverters.ToWideArray(matchedComponents);
                           modExcelInst.AppendToExcelMegger(modExcelInst.ReportWS2, arrCustomLoom);
 
 
@@ -2572,9 +2468,41 @@ namespace Electre_Customize_DotNet.MainOperation
                     }
                 }
 
+                // Build once: group the library entries by PartNumber, and index ElecCollection's
+                // Gauge by ConnectorName (first occurrence, matching the original FirstOrDefault),
+                // plus a HashSet snapshot of arrListOfContinuityComponents. Avoids each
+                // (partNumber, connectorName) pair below rescanning the whole ElecList/
+                // ElecCollection/arrListOfContinuityComponents, which is what made this loop
+                // O(partNumbers * connectorNames * ElecList.Count) in practice.
+                var elecListByPartNumber = new Dictionary<string, List<Library>>();
+                foreach (var lib in ElecList)
+                {
+                    if (!elecListByPartNumber.TryGetValue(lib.PartNumber, out var list))
+                    {
+                        list = new List<Library>();
+                        elecListByPartNumber[lib.PartNumber] = list;
+                    }
+                    list.Add(lib);
+                }
+
+                var gaugeByConnectorName = new Dictionary<string, string>();
+                foreach (var e in ElecCollection)
+                {
+                    if (!gaugeByConnectorName.ContainsKey(e.ConnectorName))
+                    {
+                        gaugeByConnectorName[e.ConnectorName] = e.Gauge;
+                    }
+                }
+
+                var continuityComponentsSet = new HashSet<string>(arrListOfContinuityComponents);
+
+                // The pins a connector gets depend only on (part number, gauge of that connector in the data), and many
+                // connectors share the same pair - so the library lookup and the pin-range expansion are done once per pair.
+                var expandedPinsByPartAndGauge = new Dictionary<(string PartNumber, string Gauge), List<string>>();
+
                 foreach (string partNumber in partnumbers)
                 {
-                    if (!ElecList.Any(e => e.PartNumber == partNumber))
+                    if (!elecListByPartNumber.TryGetValue(partNumber, out var libEntriesForPart))
                         continue;
 
                     var connectorNames = partNumbersandConnectors[partNumber];
@@ -2582,114 +2510,41 @@ namespace Electre_Customize_DotNet.MainOperation
                     foreach (var connectorName in connectorNames)
                     {
                         // Match only connectors listed in continuity components
-                        if (string.IsNullOrEmpty(connectorName) || !arrListOfContinuityComponents.Contains(connectorName))
+                        if (string.IsNullOrEmpty(connectorName) || !continuityComponentsSet.Contains(connectorName))
                             continue;
 
                         // Retrive the Gauge from data extraction based on the matched ConnectorName
-                        var connectorGauge_dataextraction = ElecCollection.Where(e => e.ConnectorName == connectorName).Select(e => e.Gauge).FirstOrDefault();
+                        var connectorGauge_dataextraction = gaugeByConnectorName.TryGetValue(connectorName, out var gaugeVal) ? gaugeVal : null;
 
-                        // Retrive the gauge of the Part Number from the Library 
-                        var gauge_fromLibrary = ElecList.Where(x => x.PartNumber == partNumber && x.Gauge == connectorGauge_dataextraction)
-                                                         .Select(x => x.Gauge)
-                                                         .FirstOrDefault();
-
-                        // If both dataextraction and library Gauges are matched then retrive the maxSizeofConnector
-                        maxsizofconnector = ElecList.Where(e => e.PartNumber == partNumber && e.Gauge == gauge_fromLibrary)
-                                                    .Select(e => e.MaxsizeofPins)
-                                                    .Select(p => Convert.ToInt32(p))
-                                                    .FirstOrDefault();
-
-                        // Retrive the pins List of the matched Part number, MaxsizeofPins and Gauge
-                        pinlistfromliabarary = ElecList
-                            .Where(x => x.PartNumber == partNumber
-                                && x.MaxsizeofPins == maxsizofconnector.ToString()
-                                && x.Gauge == gauge_fromLibrary)
-                            .Select(x => x.Pinnumber)
-                            .ToList();
-
-                        // Looping through each set of Pin List and adding it into allconnectorsandpins object
-                        foreach (string pin in pinlistfromliabarary)
+                        if (!expandedPinsByPartAndGauge.TryGetValue((partNumber, connectorGauge_dataextraction), out var expandedPins))
                         {
-                            if (pin.Contains("-"))
-                            {
-                                string[] parts = pin.Split('-');
-                                string start = parts[0];
-                                string end = parts[1];
+                            // Retrive the gauge of the Part Number from the Library
+                            var gauge_fromLibrary = libEntriesForPart.Where(x => x.Gauge == connectorGauge_dataextraction)
+                                                             .Select(x => x.Gauge)
+                                                             .FirstOrDefault();
 
-                                // Numeric range (1-20)
-                                if (int.TryParse(start, out int startNum) && int.TryParse(end, out int endNum))
-                                {
-                                    for (int num = startNum; num <= endNum; num++)
-                                    {
-                                        allconnectorsandpins.Add(connectorName);
-                                        allconnectorsandpins.Add(num.ToString());
-                                    }
-                                }
-                                // Alphabetic range ( A-Z )
-                                else if (start.Length == 1 && end.Length == 1 && char.IsLetter(start[0]) && char.IsLetter(end[0]))
-                                {                                   
-                                    for (char c = start[0]; c <= end[0]; c++) 
-                                    { 
-                                        allconnectorsandpins.Add(connectorName);
-                                        allconnectorsandpins.Add(c.ToString());
-                                    }
-                                }
-                                // Alphanumeric range with multiple letters prefix and number ranges (e.g., "A1-A5", "AA10-AA15", "AAA9-AAA19")
-                                else if (start.Length > 1 && end.Length > 1 && start.TakeWhile(char.IsLetter).Count() == end.TakeWhile(char.IsLetter).Count() &&
-                                         start.TakeWhile(char.IsLetter).All(char.IsLetter) &&
-                                         int.TryParse(start.Substring(start.TakeWhile(char.IsLetter).Count()), out int startNumRange) &&
-                                         int.TryParse(end.Substring(end.TakeWhile(char.IsLetter).Count()), out int endNumRange) &&
-                                         start.Substring(0, start.TakeWhile(char.IsLetter).Count()) == end.Substring(0, start.TakeWhile(char.IsLetter).Count()))
-                                {
-                                    // Extract the letter prefix (e.g., "A", "AA", "AAA")
-                                    string letterPrefix = start.Substring(0, start.TakeWhile(char.IsLetter).Count());
+                            // If both dataextraction and library Gauges are matched then retrive the maxSizeofConnector
+                            maxsizofconnector = libEntriesForPart.Where(e => e.Gauge == gauge_fromLibrary)
+                                                        .Select(e => e.MaxsizeofPins)
+                                                        .Select(p => Convert.ToInt32(p))
+                                                        .FirstOrDefault();
 
-                                    // Extract numeric parts of the start and end pins (e.g., 1 from "A1", 5 from "A5")
-                                    int startNumber = int.Parse(start.Substring(start.TakeWhile(char.IsLetter).Count()));
-                                    int endNumber = int.Parse(end.Substring(end.TakeWhile(char.IsLetter).Count()));
+                            // Retrive the pins List of the matched Part number, MaxsizeofPins and Gauge
+                            pinlistfromliabarary = libEntriesForPart
+                                .Where(x => x.MaxsizeofPins == maxsizofconnector.ToString()
+                                    && x.Gauge == gauge_fromLibrary)
+                                .Select(x => x.Pinnumber)
+                                .ToList();
 
-                                    // Generate the range for the numbers
-                                    for (int num = startNumber; num <= endNumber; num++)
-                                    {
-                                        allconnectorsandpins.Add(connectorName);
-                                        allconnectorsandpins.Add(letterPrefix + num.ToString());  // Combine the prefix and number
-                                    }
-                                }
-                                // Numeric range with multi-letter suffix (e.g., "2A-5A", "23AA-25AA", "227AAA-2343AAA")
-                                else if (start.Length > 1 && end.Length > 1 &&
-                                         int.TryParse(start.Substring(0, start.Length - start.TakeWhile(char.IsLetter).Count()), out int startNum4) &&
-                                         int.TryParse(end.Substring(0, end.Length - end.TakeWhile(char.IsLetter).Count()), out int endNum4) &&
-                                         start.Substring(start.Length - start.TakeWhile(char.IsLetter).Count()) == end.Substring(end.Length - end.TakeWhile(char.IsLetter).Count()))
-                                {
-                                    // Extract the numeric part and letter suffix part
-                                    string letterSuffix = start.Substring(start.Length - start.TakeWhile(char.IsLetter).Count());  // Extract the letter suffix (e.g., "AA")
-                                    int startNumber = int.Parse(start.Substring(0, start.Length - letterSuffix.Length));  // Extract the number part before the suffix
-                                    int endNumber = int.Parse(end.Substring(0, end.Length - letterSuffix.Length));  // Extract the number part before the suffix
+                            expandedPins = LibraryPinExpander.Expand(pinlistfromliabarary);
+                            expandedPinsByPartAndGauge[(partNumber, connectorGauge_dataextraction)] = expandedPins;
+                        }
 
-                                    // Loop through the number range and add the corresponding pin names
-                                    for (int num = startNumber; num <= endNumber; num++)
-                                    {
-                                        allconnectorsandpins.Add(connectorName);
-                                        allconnectorsandpins.Add(num.ToString() + letterSuffix);  // Combine the number and the letter suffix
-                                    }
-                                }
-
-                                else if (start.Equals(end, StringComparison.OrdinalIgnoreCase))
-                                {
-                                    allconnectorsandpins.Add(connectorName);
-                                    allconnectorsandpins.Add(start);  // Just add the single pin
-                                }
-                                else
-                                {
-                                    allconnectorsandpins.Add(connectorName);
-                                    allconnectorsandpins.Add(pin);
-                                }
-                            }
-                            else
-                            {
-                                allconnectorsandpins.Add(connectorName);
-                                allconnectorsandpins.Add(pin);
-                            }
+                        // Adding every pin of this connector into allconnectorsandpins (connector, pin, connector, pin ...)
+                        foreach (string pin in expandedPins)
+                        {
+                            allconnectorsandpins.Add(connectorName);
+                            allconnectorsandpins.Add(pin);
                         }
 
                         maxsizofconnector = 0;
@@ -2718,9 +2573,6 @@ namespace Electre_Customize_DotNet.MainOperation
                         arrCustomLoom_PinList[i, 1]?.ToString() ?? string.Empty
                     ));
                 }
-
-                object[,] arrCustomLoom_PinList_sorted = new object[Rows, cols];
-
 
                 // Step 2: Sort list (by Connector, then Pin) — Simple ordinal sorting
                 var sortedList = dataList
@@ -2759,233 +2611,51 @@ namespace Electre_Customize_DotNet.MainOperation
             }
         }
 
-        // more advanced method using partioner and temp files
+        // Streams Megger_{n}.txt (lowMeggerData lines first, then the High Megger pairs).
+        // All data work lives in MeggerReportWriter / the Megger engine; this method only keeps the
+        // UI concerns (folder, logging, message box).
         public void MeggerSheet5(List<ElectreObject> filteredData, string reportsFolderPath)
         {
             try
             {
                 string templpath = Path.Combine(GlobalVar.StrtCmd, "templ");
                 string folderpath = Path.Combine(templpath, reportsFolderPath);
-               // string finalFilePath = Path.Combine(folderpath, "Megger.txt");
 
                 if (!Directory.Exists(folderpath))
                     Directory.CreateDirectory(folderpath);
 
+                MeggerReportWriter.Reset();
                 highMeggerData = new ConcurrentBag<string>();
-                var tempFiles = new ConcurrentBag<string>();
 
-                int count = filteredData.Count;
-                if (count == 0)
+                if (filteredData.Count == 0)
                 {
                     return;
                 }
 
-                var redundancySet = new ConcurrentDictionary<string, byte>(Environment.ProcessorCount * 2, count * 2);
-                int partitionSize = Math.Max(200,count / Environment.ProcessorCount);
-
-                var rangePartitioner = Partitioner.Create(0, count, partitionSize);
-
-                Parallel.ForEach(rangePartitioner, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }, range =>
-                {
-                    for (int i = range.Item1; i < range.Item2; i++)
+                var files = MeggerReportWriter.WriteCombinedSheets(
+                    folderpath, filteredData, lowMeggerData, listConnectorPinsLibrary,
+                    (totalLines, totalSheets) =>
                     {
-                        var E1 = filteredData[i];
-
-                        for (int j = 0; j < count; j++)
-                        {
-                            if (i == j) continue;
-                            var n1 = filteredData[j];
-
-                            // Ensure symmetric key to avoid A-B and B-A duplicates
-                            string partA = $"{E1.ConnectorName}#{E1.PinNumber}";
-                            string partB = $"{n1.ConnectorName}#{n1.PinNumber}";
-                            string key = string.Compare(partA, partB) < 0
-                                ? $"{partA}##{partB}"
-                                : $"{partB}##{partA}";
-                                
-                            if (!redundancySet.TryAdd(key, 0))
-                                continue;
-
-                            string status = (string.Equals(n1.WireNumber, E1.WireNumber) &&
-                                             string.Equals(n1.SubNet, E1.SubNet))
-                                             ? "Low Megger"
-                                             : "High Megger";
-
-                            string resultLine = string.Empty;
-                            if (status == "High Megger")
-                            {
-                                string connectionLine = $"{E1.ConnectorName};{E1.PinNumber};{n1.ConnectorName};{n1.PinNumber}";
-                                //if connectionline is exists in lowMegger then avoid it in high megger
-                                bool existsInLowMegger = lowMeggerData.Any(line => line.StartsWith($"{connectionLine};"));
-                                if (!existsInLowMegger)
-                                {
-                                    resultLine = $"{connectionLine};{status}";
-                                    highMeggerData.Add(resultLine);
-                                }                                
-                            }
-                        }
-                    }
-                });
-
-                if (listConnectorPinsLibrary.Count > 0)
-                {
-                    // Partition the source list for parallel processing
-                    var rangePartitioner1 = Partitioner.Create(0, listConnectorPinsLibrary.Count);
-
-                    Parallel.ForEach(rangePartitioner1, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }, range =>
-                    {
-                        for (int idx = range.Item1; idx < range.Item2; idx++)
-                        {
-                            var source = listConnectorPinsLibrary[idx];
-                            string srcConnector = source.ConnectorName;
-                            string srcPin = source.PinNumber;
-
-                            // Loop through filteredData
-                            foreach (var target in filteredData)
-                            {
-                                string tgtConnector = target.ConnectorName;
-                                string tgtPin = target.PinNumber;
-
-                                if (string.Equals(srcConnector, tgtConnector) &&
-                                    string.Equals(srcPin, tgtPin))
-                                    continue;
-
-                                // Create symmetric key
-                                string keyA = $"{srcConnector}#{srcPin}";
-                                string keyB = $"{tgtConnector}#{tgtPin}";
-                                string pairKey = string.Compare(keyA, keyB) < 0
-                                    ? $"{keyA}##{keyB}"
-                                    : $"{keyB}##{keyA}";
-
-                                if (!redundancySet.TryAdd(pairKey, 0))
-                                    continue;
-
-                                string line = $"{srcConnector};{srcPin};{tgtConnector};{tgtPin};High Megger";
-                                highMeggerData.Add(line);
-                            }
-
-                            // Loop through pin list itself
-                            foreach(var target in listConnectorPinsLibrary)
-                            {
-                                string tgtConnector = target.ConnectorName;
-                                string tgtPin = target.PinNumber;
-
-                                if (string.Equals(srcConnector, tgtConnector) &&
-                                    string.Equals(srcPin, tgtPin))
-                                    continue;
-
-                                // Create symmetric key
-                                string keyA = $"{srcConnector}#{srcPin}";
-                                string keyB = $"{tgtConnector}#{tgtPin}";
-                                string pairKey = string.Compare(keyA, keyB) < 0
-                                    ? $"{keyA}##{keyB}"
-                                    : $"{keyB}##{keyA}";
-
-                                if (!redundancySet.TryAdd(pairKey, 0))
-                                    continue;
-
-                                string line = $"{srcConnector};{srcPin};{tgtConnector};{tgtPin};High Megger";
-                                highMeggerData.Add(line);
-                            }
-                        }
+                        Logging.Info($"Total Megger lines to write: {totalLines}");
+                        Logging.Info($"Total Megger sheets to create: {totalSheets}");
                     });
-                }
 
-                // Final Write to File (Streaming - avoids large in-memory strings)
-
-                // Sort HighMeggerData by FromConnector and FromPin
-                highMeggerData = new ConcurrentBag<string>(
-                    highMeggerData
-                        .OrderByDescending(line =>
-                        {
-                            var parts = line.Split(';');
-                            return parts.Length > 1 ? parts[0] : string.Empty; // FromConnector
-                        })
-                        .ThenByDescending(line =>
-                        {
-                            var parts = line.Split(';');
-                            return parts.Length > 2 ? parts[1] : string.Empty; // FromPin
-                        }));
-
-                // Final Write to File (Streaming - avoids large in-memory strings)
-                long maxLines = highMeggerData.Count + lowMeggerData.Count;
-                long maxLinesPerSheet = 5000000; // 5 million lines per sheet
-                int totalSheets = (int)Math.Ceiling((double)maxLines / maxLinesPerSheet);
-                Logging.Info($"Total Megger lines to write: {maxLines}");
-                Logging.Info($"Total Megger sheets to create: {totalSheets}");
-
-                int sheetIndex = 1;
-                long lineCounterInCurrentSheet = 0;
-
-                IEnumerable<string> combinedData = lowMeggerData.Concat(highMeggerData); // No ToList()
-                StreamWriter writer = null;
-
-                try
+                foreach (var file in files)
                 {
-                    writer = new StreamWriter(Path.Combine(folderpath, $"Megger_{sheetIndex}.txt"), false, Encoding.UTF8, bufferSize: 65536);
-                    writer.WriteLine("From;TO");
-                    writer.WriteLine("FromConnector;FromPin;ToConnector;ToPin;Megger");
-
-                    foreach (var line in combinedData)
-                    {
-                        if (lineCounterInCurrentSheet >= maxLinesPerSheet)
-                        {
-                            Logging.Info($"Megger_{sheetIndex}.txt created successfully");
-                            writer.Dispose(); // Close current file
-                            sheetIndex++;
-                            lineCounterInCurrentSheet = 0;
-
-                            writer = new StreamWriter(Path.Combine(folderpath, $"Megger_{sheetIndex}.txt"), false, Encoding.UTF8, bufferSize: 65536);
-                            writer.WriteLine("From;TO");
-                            writer.WriteLine("FromConnector;FromPin;ToConnector;ToPin;Megger");
-                        }
-
-                        writer.WriteLine(line);
-                        lineCounterInCurrentSheet++;
-                    }
+                    Logging.Info($"{Path.GetFileName(file)} created successfully");
                 }
-                finally
-                {
-                    writer?.Dispose(); // Ensure the last file is closed properly
-                }
-
-                //commented on July 17 2025 before implementing splitting the files
-                /*using (var writer = new StreamWriter(finalFilePath, false, Encoding.UTF8, bufferSize: 65536))
-                {
-                    writer.WriteLine("From;TO");
-                    writer.WriteLine("FromConnector;FromPin;ToConnector;ToPin;Megger");
-
-                    foreach (var line in lowMeggerData)
-                        writer.WriteLine(line);
-
-                    // Sort HighMeggerData by FromConnector and FromPin
-                    highMeggerData = new ConcurrentBag<string>(
-                        highMeggerData
-                            .OrderByDescending(line =>
-                            {
-                                var parts = line.Split(';');
-                                return parts.Length > 1 ? parts[0] : string.Empty; // FromConnector
-                            })
-                            .ThenByDescending(line =>
-                            {
-                                var parts = line.Split(';');
-                                return parts.Length > 2 ? parts[1] : string.Empty; // FromPin
-                            }));
-
-
-                    foreach (var line in highMeggerData)
-                        writer.WriteLine(line);
-                }*/
 
                 Logging.Info("Megger sheet generation completed successfully.");
             }
             catch (Exception ex)
             {
-                MessageBox.Show($" Error Megger sheet: {ex.Message}");
-                Logging.Error($"Megger Sheet 5: Error occured : {ex.Message}");
+                var real = (ex as AggregateException)?.Flatten().InnerException ?? ex;
+                MessageBox.Show($" Error Megger sheet: {real.Message}");
+                Logging.Error($"Megger Sheet 5: Error occured : {real.Message}");
             }
         }
 
+        // Writes HighMegger_{n}.txt (High Megger pairs only) or {type}Megger_{n}.txt (lowMeggerData only).
         public void MeggerSheet6and7(string meggerType, string reportsFolderPath)
         {
             try
@@ -2998,54 +2668,20 @@ namespace Electre_Customize_DotNet.MainOperation
                     Directory.CreateDirectory(folderpath);
                 }
 
-                IEnumerable<string> outputLines = meggerType == "High" ? highMeggerData : lowMeggerData;
+                var files = MeggerReportWriter.WriteTypeSheets(meggerType, folderpath, lowMeggerData);
 
-                long maxLinesPerSheet = 5_000_000;
-                long lineCounterInCurrentSheet = 0;
-                int sheetIndex = 1;
-
-                StreamWriter writer = null;
-
-                try
+                foreach (var file in files)
                 {
-                    string filePath = Path.Combine(folderpath, $"{meggerType}Megger_{sheetIndex}.txt");
-                    writer = new StreamWriter(filePath, false, Encoding.UTF8, bufferSize: 65536);
-                    writer.WriteLine("From;TO");
-                    writer.WriteLine("FromConnector;FromPin;ToConnector;ToPin;Megger");
-
-                    foreach (var line in outputLines)
-                    {
-                        if (lineCounterInCurrentSheet >= maxLinesPerSheet)
-                        {
-                            Logging.Info($"{meggerType}Megger_{sheetIndex}.txt created successfully");
-
-                            writer.Dispose();
-                            sheetIndex++;
-                            lineCounterInCurrentSheet = 0;
-
-                            filePath = Path.Combine(folderpath, $"{meggerType}Megger_{sheetIndex}.txt");
-                            writer = new StreamWriter(filePath, false, Encoding.UTF8, bufferSize: 65536);
-                            writer.WriteLine("From;TO");
-                            writer.WriteLine("FromConnector;FromPin;ToConnector;ToPin;Megger");
-                        }
-
-                        writer.WriteLine(line);
-                        lineCounterInCurrentSheet++;
-                    }
-
-                    Logging.Info($"{meggerType}Megger_{sheetIndex}.txt created successfully");
-                }
-                finally
-                {
-                    writer?.Dispose(); // Ensure last file is closed
+                    Logging.Info($"{Path.GetFileName(file)} created successfully");
                 }
 
                 Logging.Info($"{meggerType} Megger sheet generation completed successfully.");
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error {meggerType}: " + ex.Message);
-                Logging.Error($"Error occurred in {meggerType} Megger sheet: {ex.Message}");
+                var real = (ex as AggregateException)?.Flatten().InnerException ?? ex;
+                MessageBox.Show($"Error {meggerType}: " + real.Message);
+                Logging.Error($"Error occurred in {meggerType} Megger sheet: {real.Message}");
             }
         }
 
@@ -3858,45 +3494,11 @@ namespace Electre_Customize_DotNet.MainOperation
          }*/
         #endregion
                
-        //this method Converts data from Dictionary to 2d array for Megger sheet3
-        public static object[,] ConvertDictionaryTo2DArray(Dictionary<string, List<string>> dict)
-        {
-            try
-            {
-
-                int rows = dict.Count;
-                int cols = dict.Values.Max(list => list.Count) + 1; // +1 for key column
-
-                object[,] array2D = new object[rows, cols];
-
-                int row = 0;
-                foreach (var kvp in dict)
-                {
-                    array2D[row, 0] = kvp.Key; // First column for keys
-                    for (int col = 0; col < kvp.Value.Count; col++)
-                    {
-                        array2D[row, col + 1] = kvp.Value[col]; // Remaining columns for values
-                    }
-                    row++;
-                }
-                return array2D;
-            }
-            catch (Exception ex)
-            {
-
-                // Log error message
-                Logging.Error("modMain: #009 " + ex.Message);
-
-
-            }
-            return new object[0, 0];  // Return empty array on error
-        }
-
         public void CableList_Report_Preprocessing(object[,] iarr, string reportName, modExcel modExcelInst)
         {
             try
             {
-                int maxRows = modExcelInst.MaxRowinArray(iarr);
+                int maxRows = ExcelRowRules.MaxRowinArray(iarr);
                 int finalRowCount = 0;
 
                 const int initialRowOffset = 1;  // Excel is 1-indexed
@@ -3906,15 +3508,25 @@ namespace Electre_Customize_DotNet.MainOperation
                 object[,] arrFinalReportLOOM = new object[maxRows, 17];
                 Excel.Worksheet activeSheet = (Excel.Worksheet)modExcelInst.ExcelApp.ActiveWorkbook.ActiveSheet;
 
+                // Bulk-read columns 1-7 for all needed rows in a single COM call instead of
+                // 7 individual Cells[].Value2 reads per row. Range.Value2 for a multi-cell range
+                // comes back 1-indexed on both dimensions, so bulkValues[row, col] lines up
+                // directly with the original activeSheet.Cells[row + 1, col] access.
+                object[,] bulkValues = null;
+                if (maxRows >= 1)
+                {
+                    bulkValues = ExcelBulk.ReadValues(activeSheet, 2, 1, maxRows + 1, 7);
+                }
+
                 for (int row = 1; row <= maxRows; row++)
                 {
-                    string wireCode = Convert.ToString((activeSheet.Cells[row + 1, 5] as Excel.Range)?.Value2);
-                    string sourcePin = Convert.ToString((activeSheet.Cells[row + 1, 1] as Excel.Range)?.Value2);
-                    string sourceConn = Convert.ToString((activeSheet.Cells[row + 1, 2] as Excel.Range)?.Value2);
-                    string destPin = Convert.ToString((activeSheet.Cells[row + 1, 3] as Excel.Range)?.Value2);
-                    string destConn = Convert.ToString((activeSheet.Cells[row + 1, 4] as Excel.Range)?.Value2);
-                    string destination = Convert.ToString((activeSheet.Cells[row + 1, 7] as Excel.Range)?.Value2);
-                    string remarks = Convert.ToString((activeSheet.Cells[row + 1, 6] as Excel.Range)?.Value2);
+                    string wireCode = Convert.ToString(bulkValues[row, 5]);
+                    string sourcePin = Convert.ToString(bulkValues[row, 1]);
+                    string sourceConn = Convert.ToString(bulkValues[row, 2]);
+                    string destPin = Convert.ToString(bulkValues[row, 3]);
+                    string destConn = Convert.ToString(bulkValues[row, 4]);
+                    string destination = Convert.ToString(bulkValues[row, 7]);
+                    string remarks = Convert.ToString(bulkValues[row, 6]);
 
                     if (row == 1 || !(wireCode == Convert.ToString(arrFinalReportLOOM[finalRowCount - 1, 2]) &&
                                       sourcePin == Convert.ToString(arrFinalReportLOOM[finalRowCount - 1, 4]) &&
@@ -3941,10 +3553,20 @@ namespace Electre_Customize_DotNet.MainOperation
                     }
                 }
 
-                int numberOfSheets = modExcelInst.GetNumberOfSheetsRequired(finalRowCount, loomSheetRowLimit);
+                int numberOfSheets = ExcelRowRules.GetNumberOfSheetsRequired(finalRowCount, loomSheetRowLimit);
                 int currentSheet = 1;
                 int serialNumber = 0;
                 int startRow = 0;
+
+                // A given row's wire code otherwise gets Split('/') at least twice - once as a
+                // "compareRow" against the previous group's baseRow, and again as "baseRow" once
+                // it becomes the next group's leader. Precompute each row's key once instead.
+                var wireKeys = new string[finalRowCount];
+                for (int r = 0; r < finalRowCount; r++)
+                {
+                    string[] parts = Convert.ToString(arrFinalReportLOOM[r, 2])?.Split('/');
+                    wireKeys[r] = parts?.Length >= 2 ? parts[0] + parts[1] : "";
+                }
 
                 while (startRow < finalRowCount - 1)
                 {
@@ -3952,13 +3574,11 @@ namespace Electre_Customize_DotNet.MainOperation
                     if (baseRow > currentSheet * loomSheetRowLimit)
                         currentSheet++;
 
-                    string[] baseWireParts = Convert.ToString(arrFinalReportLOOM[baseRow, 2])?.Split('/');
-                    string baseWireKey = baseWireParts?.Length >= 2 ? baseWireParts[0] + baseWireParts[1] : "";
+                    string baseWireKey = wireKeys[baseRow];
 
                     for (int compareRow = baseRow + 1; compareRow < finalRowCount; compareRow++)
                     {
-                        string[] compareWireParts = Convert.ToString(arrFinalReportLOOM[compareRow, 2])?.Split('/');
-                        string compareWireKey = compareWireParts?.Length >= 2 ? compareWireParts[0] + compareWireParts[1] : "";
+                        string compareWireKey = wireKeys[compareRow];
 
                         arrFinalReportLOOM[baseRow, 13] = baseRow - (currentSheet - 1) * loomSheetRowLimit + loomInitialRow;
 
@@ -4001,35 +3621,6 @@ namespace Electre_Customize_DotNet.MainOperation
             }
         }
 
-        // This Dictionary is used for Swapping the EQU connectors
-        public static Dictionary<string, string> connectorMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-        {
-            { "J1", "a" }, { "a", "J1" },
-            { "J2", "b" }, { "b", "J2" },
-            { "J3", "c" }, { "c", "J3" },
-            { "J4", "d" }, { "d", "J4" },
-            { "J5", "e" }, { "e", "J5" },
-            { "J6", "f" }, { "f", "J6" },
-            { "J7", "g" }, { "g", "J7" },
-            { "J8", "h" }, { "h", "J8" },
-            { "J9", "j" }, { "j", "J9" },   // Skipped 'i'
-            { "J10", "k" }, { "k", "J10" },
-            { "J11", "l" }, { "l", "J11" },
-            { "J12", "m" }, { "m", "J12" },
-            { "J13", "n" }, { "n", "J13" },
-            { "J14", "p" }, { "p", "J14" }, // Skipped 'o'
-            { "J15", "q" }, { "q", "J15" },
-            { "J16", "r" }, { "r", "J16" },
-            { "J17", "s" }, { "s", "J17" },
-            { "J18", "t" }, { "t", "J18" },
-            { "J19", "u" }, { "u", "J19" },
-            { "J20", "v" }, { "v", "J20" },
-            { "J21", "w" }, { "w", "J21" },
-            { "J22", "x" }, { "x", "J22" },
-            { "J23", "y" }, { "y", "J23" },
-            { "J24", "z" }, { "z", "J24" },
-        };
-
         /* public static Dictionary<string, string> connectorMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
          {
              { "J1", "A" }, { "A", "J1" },
@@ -4062,7 +3653,7 @@ namespace Electre_Customize_DotNet.MainOperation
           {
               try
               {
-                  int MaxARR = modExcelInst.MaxRowinArray(iarr);
+                  int MaxARR = ExcelRowRules.MaxRowinArray(iarr);
 
                   int Z = 1;
                   object[,] arrCustomLoom = new object[MaxARR, 9];
@@ -4134,7 +3725,7 @@ namespace Electre_Customize_DotNet.MainOperation
 
                   // Define additional variables for sheet creation
                   int LoomSheetRowRequired = 37;
-                  int NoLoomSheets = modExcelInst.GetNumberOfSheetsRequired(c, LoomSheetRowRequired);
+                  int NoLoomSheets = ExcelRowRules.GetNumberOfSheetsRequired(c, LoomSheetRowRequired);
 
                   int SlNo = 0;
                   int StartupRow = 1;

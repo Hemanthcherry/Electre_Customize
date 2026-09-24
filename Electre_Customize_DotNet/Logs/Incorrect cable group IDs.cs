@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Electre_Customize_DotNet.Helpers.Global;
 
 namespace Electre_Customize_DotNet.Logs
 {
@@ -24,7 +25,18 @@ namespace Electre_Customize_DotNet.Logs
             }
          }
 
+        private static readonly object NameLock = new object();
+
+        // the log file name is created on first use - guarded because parallel Excel workers may log at the same moment
         public static string GetLogFilePath()
+        {
+            lock (NameLock)
+            {
+                return GetLogFilePathCore();
+            }
+        }
+
+        private static string GetLogFilePathCore()
         {
 
             // If log file name already exists, return it
@@ -45,44 +57,16 @@ namespace Electre_Customize_DotNet.Logs
 
         public static void WriteLog(string message)
         {
-            
-              string  logFilePath = GetLogFilePath();
-           
-            string logMessage = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}]  {message}";
-            Console.WriteLine(logMessage);
-
-            try
-            {
-                // Append the log message to the file
-                File.AppendAllText(logFilePath, logMessage + Environment.NewLine);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Failed to write log: {ex.Message}");
-            }
+            LogFileHelper.AppendTimestamped(GetLogFilePath(), message);
         }
 
         public static void Info(string message)
         {
             WriteLog(message);
         }
-        public  static void DeletePreviousLogs()
+        public static void DeletePreviousLogs()
         {
-            try
-            {
-                if (Directory.Exists(LogFolder)) // Check if the log directory exists
-                {
-                    foreach (string file in Directory.GetFiles(LogFolder, "Incorrect cable group IDS_*.log"))
-                    {
-                        File.Delete(file); // Delete each log file
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Failed to delete old logs: {ex.Message}");
-
-            }
+            LogFileHelper.DeleteMatching(LogFolder, "Incorrect cable group IDS_*.log");
         }
     }
 }

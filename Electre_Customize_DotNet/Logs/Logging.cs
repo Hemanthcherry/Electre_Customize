@@ -10,6 +10,7 @@ namespace Electre_Customize_DotNet.Logs
     public static class Logging
     {
         private static readonly string LogFolder = Path.Combine(GlobalVar.StrtCmd, "Logs");
+        private static readonly object WriteLock = new object();   // parallel Excel workers log at the same time
 
         static Logging()
         {
@@ -42,7 +43,10 @@ namespace Electre_Customize_DotNet.Logs
             try
             {
                 // Append the log message to the file
-                File.AppendAllText(logFilePath, logMessage + Environment.NewLine);
+                lock (WriteLock)
+                {
+                    File.AppendAllText(logFilePath, logMessage + Environment.NewLine);
+                }
             }
             catch (Exception ex)
             {
@@ -58,7 +62,10 @@ namespace Electre_Customize_DotNet.Logs
             try
             {
                 // Append the log message to the file
-                File.AppendAllText(logFilePath, logMessage + Environment.NewLine);
+                lock (WriteLock)
+                {
+                    File.AppendAllText(logFilePath, logMessage + Environment.NewLine);
+                }
             }
             catch (Exception ex)
             {

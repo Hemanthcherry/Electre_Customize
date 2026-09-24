@@ -6,6 +6,12 @@
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Report generation allocates large arrays/object[,] buffers across hundreds of drawings in one
+         batch; Background Server GC (Server + Concurrent) favors throughput for this kind of bulk
+         allocation while still collecting in the background to avoid long UI-thread stalls. Single
+         config flag, fully reversible - measure with the Phase 0 timers before/after. -->
+    <ServerGarbageCollection>true</ServerGarbageCollection>
+    <ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
   </PropertyGroup>
 
   <ItemGroup>

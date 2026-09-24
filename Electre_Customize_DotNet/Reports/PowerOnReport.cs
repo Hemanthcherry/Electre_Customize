@@ -5,6 +5,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Electre_Customize_DotNet.Helpers.Global;
+using Electre_Customize_DotNet.Helpers.PowerOn;
 
 namespace Electre_Customize_DotNet.Reports
 {
@@ -22,6 +24,24 @@ namespace Electre_Customize_DotNet.Reports
         public static List<ElectreObject> selectedPanelObject;
         public static List<ElectreObject> selectedSheetObject; // added for Panel Drawing schedules
 
+        // The Trace*/FindGroundPin methods below always scan modMain.ElecCollection_All directly (not a
+        // per-call parameter), so they share one lookup index that is rebuilt only when that list is
+        // replaced by a new data load. See ElectreTraversalIndex for the exact semantics each lookup keeps.
+        private static readonly TraversalIndexCache IndexCache = new TraversalIndexCache();
+
+        internal static ElectreTraversalIndex GetIndex() => IndexCache.For(modMain.ElecCollection_All);
+
+        /// <summary>
+        /// Exposes the shared modMain.ElecCollection_All index to modExcel.TraceAndLogPath, which
+        /// has its own copy of the same "objects sharing this wire+subnet" scan (mirrors
+        /// source.Where(w => w.WireNumber == wireNumber &amp;&amp; w.SubNet == subNet)). Reuses the
+        /// exact same cached index the Trace* methods below already use.
+        /// </summary>
+        public static List<ElectreObject> GetConnectedObjectsByWireSubNet(string wireNumber, string subNet)
+        {
+            return GetIndex().GetByWireSubNet(wireNumber, subNet);
+        }
+
         public void PowerOnReportGeneration()
         {
             selectedPanelObject = PanelElectreObject(modMain.ElecCollection_All, _selectedPanellist);
@@ -31,7 +51,12 @@ namespace Electre_Customize_DotNet.Reports
 
         private List<ElectreObject> PanelElectreObject(List<ElectreObject> elecollection, List<string> selectedPanel)
         {
-            var collection = elecollection.Where(e => selectedPanel.Select(p => p.ToLower()).Contains(e.Panel.ToLower())).ToList();
+            // elecollection is modMain.ElecCollection_All (project-wide scale). The original
+            // re-lowered and re-scanned selectedPanel for every single element - lower it into a
+            // HashSet once instead; e.Panel.ToLower() is left exactly as-is (still throws on a
+            // null Panel, matching the original).
+            var panelSet = new HashSet<string>(selectedPanel.Select(p => p.ToLower()));
+            var collection = elecollection.Where(e => panelSet.Contains(e.Panel.ToLower())).ToList();
             return collection;
         }
 
@@ -47,7 +72,9 @@ namespace Electre_Customize_DotNet.Reports
         // added for Panel Drawing schedules
         private List<ElectreObject> PanelElectreObject_PanelDWG(List<ElectreObject> elecollection, List<string> selectedSheet)
         {
-            var collection = elecollection.Where(e => selectedSheet.Select(p => p.ToLower()).Contains(e.SheetName.ToLower())).ToList();
+            // Same fix as PanelElectreObject above.
+            var sheetSet = new HashSet<string>(selectedSheet.Select(p => p.ToLower()));
+            var collection = elecollection.Where(e => sheetSet.Contains(e.SheetName.ToLower())).ToList();
             return collection;
         }
         #endregion
@@ -126,7 +153,7 @@ namespace Electre_Customize_DotNet.Reports
                       {
                           case "EQU":
                               currentConnectorName = $"{connObj.ConnectorName}";
-                              var nextConObj = TracePinofEQUConnector(connObj);
+                              var nextConObj = ConnectorPinTracer.TracePinofEQUConnector(GetIndex(), connObj);
                               if(nextConObj != null)
                               {
                                   currentConnectorName = nextConObj.ConnectorName;
@@ -246,6 +273,20 @@ namespace Electre_Customize_DotNet.Reports
                                 ).ToList();
 
 
+            return TraceGroundPins(gndObjects);
+        }
+
+        /// <summary>
+        /// Same result as <see cref="FindGroundPin(List{ElectreObject}, ElectreObject)"/>, but the ground candidates come from a
+        /// per-panel index built once for the whole report instead of a full scan of the collection per circuit breaker.
+        /// </summary>
+        public static List<string> FindGroundPin(GroundCandidateIndex groundIndex, ElectreObject source)
+        {
+            return TraceGroundPins(groundIndex.CandidatesFor(source));
+        }
+
+        private static List<string> TraceGroundPins(List<ElectreObject> gndObjects)
+        {
             List<string> groundConnectorAndPins = new List<string>();
            
             if (gndObjects.Count == 0)
@@ -264,8 +305,8 @@ namespace Electre_Customize_DotNet.Reports
         {
             visited.Add($"{connectorName},{pinNumber}");
 
-            var connectedObjects = modMain.ElecCollection_All
-                .Where(w => w.WireNumber == wireNumber && w.SubNet == subNet && !visited.Contains($"{w.ConnectorName},{w.PinNumber}"))
+            var connectedObjects = GetIndex().GetByWireSubNet(wireNumber, subNet)
+                .Where(w => !visited.Contains($"{w.ConnectorName},{w.PinNumber}"))
                 .ToList();
 
             if (connectedObjects.Count == 0)
@@ -282,7 +323,7 @@ namespace Electre_Customize_DotNet.Reports
                 switch (connObj.ComponentType)
                 {
                     case "EQU":
-                        var nextObjEQU = TracePinofEQUConnector(connObj);
+                        var nextObjEQU = ConnectorPinTracer.TracePinofEQUConnector(GetIndex(), connObj);
                         if(nextObjEQU == null)
                         {
                             groundConnectorAndPins.Add($"{connObj.ConnectorName},{connObj.PinNumber}");
@@ -292,7 +333,7 @@ namespace Electre_Customize_DotNet.Reports
                             TraceAndLogPathGND(source, nextObjEQU.WireNumber, nextObjEQU.ConnectorName, nextObjEQU.PinNumber, nextObjEQU.SubNet, visited, ref groundConnectorAndPins);
                         break;
                     case "DIS":
-                        var nextObj = TracePinofBreakConnector(connObj);
+                        var nextObj = ConnectorPinTracer.TracePinofBreakConnector(GetIndex(), connObj);
                         if (nextObj == null)
                         {
                             groundConnectorAndPins.Add($"{connObj.ConnectorName},{connObj.PinNumber}");
@@ -303,7 +344,7 @@ namespace Electre_Customize_DotNet.Reports
                         break;
 
                     case "TBK":
-                        var jmList = TracePinOfJM(connObj);
+                        var jmList = ConnectorPinTracer.TracePinOfJM(GetIndex(), connObj);
                         if (jmList.Count == 0)
                         {
                             groundConnectorAndPins.Add($"{connObj.ConnectorName},{connObj.PinNumber}");
@@ -316,7 +357,7 @@ namespace Electre_Customize_DotNet.Reports
                         break;
 
                     case "SPL":
-                        var splList = TracePinOfSPL(connObj);
+                        var splList = ConnectorPinTracer.TracePinOfSPL(GetIndex(), connObj);
                         if (splList.Count == 0)
                         {
                             groundConnectorAndPins.Add($"{connObj.ConnectorName},{connObj.PinNumber}");
@@ -329,7 +370,7 @@ namespace Electre_Customize_DotNet.Reports
                         break;
 
                     case "TER":
-                        var terList = TracePinOfTER(connObj);
+                        var terList = ConnectorPinTracer.TracePinOfTER(GetIndex(), connObj);
                         if (terList.Count == 0)
                         {
                             groundConnectorAndPins.Add($"{connObj.ConnectorName},{connObj.PinNumber}");
@@ -349,84 +390,6 @@ namespace Electre_Customize_DotNet.Reports
                 }
             }
         }      
-
-        public static ElectreObject TracePinofEQUConnector(ElectreObject eleObj)
-        {
-            string lastConnectorName = eleObj.ConnectorName;
-            // Iterate through keys in the connectorMap
-            foreach (var key in modMain.connectorMap.Keys)
-            {
-                if (lastConnectorName.EndsWith(key, StringComparison.OrdinalIgnoreCase))
-                {
-                    string mappedValue = modMain.connectorMap[key];
-                    int suffixIndex = lastConnectorName.Length - key.Length;
-                    lastConnectorName = lastConnectorName.Substring(0, suffixIndex) + mappedValue;
-                    break;
-                }
-            }
-
-            var nextWireConnection = modMain.ElecCollection_All
-                                .FirstOrDefault(w => string.Equals(w.ConnectorName, lastConnectorName, StringComparison.OrdinalIgnoreCase) && w.PinNumber == eleObj.PinNumber);
-
-            return nextWireConnection;
-        }
-
-        public static ElectreObject TracePinofBreakConnector(ElectreObject eleObj)
-        {
-            string lastConnectorName = eleObj.ConnectorName;
-
-            if (lastConnectorName.EndsWith("_F", StringComparison.OrdinalIgnoreCase))
-            {
-                lastConnectorName = lastConnectorName.Substring(0, lastConnectorName.Length - 2) + "_M";
-            }
-            else if (lastConnectorName.EndsWith("_M", StringComparison.OrdinalIgnoreCase))
-            {
-                lastConnectorName = lastConnectorName.Substring(0, lastConnectorName.Length - 2) + "_F";
-            }
-
-            var nextWireConnection = modMain.ElecCollection_All
-                                .FirstOrDefault(w => string.Equals(w.ConnectorName, lastConnectorName, StringComparison.OrdinalIgnoreCase) && w.PinNumber == eleObj.PinNumber);
-
-            return nextWireConnection;           
-        }
-
-        public static List<ElectreObject> TracePinOfJM(ElectreObject eleObj)
-        {
-            var CoonnectedObjs = modMain.ElecCollection_All
-                .Where(obj => obj.ConnectorName == eleObj.ConnectorName &&
-                              obj.ComponentType == "TBK" &&
-                              obj.SubNet != eleObj.SubNet &&
-                              obj.ShuntExt1 == eleObj.ShuntExt1 &&
-                              !string.IsNullOrEmpty(obj.ShuntExt1))
-                .ToList();
-
-            return CoonnectedObjs;
-        }
-
-        public static List<ElectreObject> TracePinOfSPL(ElectreObject eleObj)
-        {
-            var CoonnectedObjs = modMain.ElecCollection_All
-                .Where(obj => obj.ConnectorName == eleObj.ConnectorName && 
-                              obj.ComponentType == "SPL" &&
-                              obj.SubNet != eleObj.SubNet &&
-                              obj.ShuntExt1 == eleObj.ShuntExt1)
-                .ToList();
-
-            return CoonnectedObjs;
-        }
-
-        public static List<ElectreObject> TracePinOfTER(ElectreObject eleObj)
-        {
-            var CoonnectedObjs = modMain.ElecCollection_All
-                                    .Where(obj => obj.ConnectorName == eleObj.ConnectorName && 
-                                     obj.ComponentType == "TER" && 
-                                     obj.ShuntExt1 == eleObj.ShuntExt1 && 
-                                     obj.SubNet != eleObj.SubNet && 
-                                     !string.IsNullOrEmpty(obj.ShuntExt1))
-                                     .ToList();
-
-            return CoonnectedObjs;
-        }
 
         /* public static string TracePinofBreakConnectorGND(ElectreObject eleObj)
        {

@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Electre_Customize_DotNet.MainOperation;
+using Electre_Customize_DotNet.Helpers.Global;
 
 namespace Electre_Customize_DotNet.Logs
 {
@@ -33,19 +34,7 @@ namespace Electre_Customize_DotNet.Logs
 
         private static void WriteLog(string message)
         {
-            string logFilePath = GetLogFilePath();
-            string logMessage = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}]  {message}";
-            Console.WriteLine(logMessage);
-
-            try
-            {
-                // Append the log message to the file
-                File.AppendAllText(logFilePath, logMessage + Environment.NewLine);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Failed to write log: {ex.Message}");
-            }
+            LogFileHelper.AppendTimestamped(GetLogFilePath(), message);
         }
 
         public static void Info(string message)
@@ -54,21 +43,7 @@ namespace Electre_Customize_DotNet.Logs
         }
         public static void DeletePreviousLogs()
         {
-            try
-            {
-                if (Directory.Exists(LogFolder)) // Check if the log directory exists
-                {
-                    foreach (string file in Directory.GetFiles(LogFolder, "DuplicateWire_*.log"))
-                    {
-                        File.Delete(file); // Delete each log file
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Failed to delete old logs: {ex.Message}");
-
-            }
+            LogFileHelper.DeleteMatching(LogFolder, "DuplicateWire_*.log");
         }
     }
 }

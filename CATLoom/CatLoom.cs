@@ -201,14 +201,21 @@ namespace CATLoom
                 if (selectedReport.Count != 0)
                 {
                     Logging.Info($"Total selected reports: {selectedReport.Count}");
+
+                    // Group dataTable's rows by "Bundle_from" once instead of rescanning the whole
+                    // table for every selected loom (was O(selectedReport.Count * dataTable.Rows.Count)).
+                    // ToLookup preserves each group's original row order, same as the per-value
+                    // .Where() did, and a missing key still yields an empty sequence (so
+                    // CopyToDataTable() on a loom with no matching rows still throws into the same
+                    // per-value catch below, exactly as before).
+                    var rowsByBundleFrom = dataTable.AsEnumerable().ToLookup(row => row.Field<string>("Bundle_from"));
+
                     foreach (string value in selectedReport)
                     {
                         try
                         {
                             Logging.Info($"Processing loom: {value}");
-                            var filteredData = dataTable.AsEnumerable()
-                                                    .Where(row => row.Field<string>("Bundle_from") == value)
-                                                    .CopyToDataTable();
+                            var filteredData = rowsByBundleFrom[value].CopyToDataTable();
 
                             string outputFileName = Path.Combine(outputFolder, $"{value}.csv");
                             WriteCsv(filteredData, outputFileName);

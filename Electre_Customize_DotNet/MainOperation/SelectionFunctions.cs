@@ -33,34 +33,40 @@ namespace Electre_Customize_DotNet.MainOperation
 
         public void SelectCheckItems(CheckBox checkbox, CheckedListBox chkListbox, HashSet<string> checkedItem)
         {
-            
-            if (checkbox.Checked == true)
+            chkListbox.BeginUpdate(); // one repaint at the end instead of one per item (ItemCheck handlers still run)
+            try
             {
-                bool isChecked = checkbox.Checked;
-
-                for (int i = 0; i < chkListbox.Items.Count; i++)
+                if (checkbox.Checked == true)
                 {
-                    chkListbox.SetItemChecked(i, isChecked);
-                    string item = chkListbox.Items[i].ToString();
-                    if (isChecked)
+                    bool isChecked = checkbox.Checked;
+
+                    for (int i = 0; i < chkListbox.Items.Count; i++)
                     {
-                        checkedItem.Add(item);
+                        chkListbox.SetItemChecked(i, isChecked);
+                        string item = chkListbox.Items[i].ToString();
+                        if (isChecked)
+                        {
+                            checkedItem.Add(item);
+                        }
+                        else
+                        {
+                            checkedItem.Remove(item);
+                        }
                     }
-                    else
+                }
+
+                else
+                {
+                    for (int i = 0; i < chkListbox.Items.Count; i++)
                     {
-                        checkedItem.Remove(item);
+                        chkListbox.SetItemChecked(i, false);
                     }
                 }
             }
-
-            else
+            finally
             {
-                for (int i = 0; i < chkListbox.Items.Count; i++)
-                {
-                    chkListbox.SetItemChecked(i, false);
-                }
+                chkListbox.EndUpdate();
             }
-
         }
        //public  int TotalCount(int count)
        //{
@@ -211,10 +217,18 @@ namespace Electre_Customize_DotNet.MainOperation
             if (checkedItems == null)
                 checkedItems = new HashSet<string>();
 
-            chkListBox.Items.Clear();
-            foreach (var item in filteredItems)
+            chkListBox.BeginUpdate(); // one repaint at the end instead of one per item
+            try
             {
-                chkListBox.Items.Add(item, checkedItems.Contains(item));
+                chkListBox.Items.Clear();
+                foreach (var item in filteredItems)
+                {
+                    chkListBox.Items.Add(item, checkedItems.Contains(item));
+                }
+            }
+            finally
+            {
+                chkListBox.EndUpdate();
             }
         }
 
