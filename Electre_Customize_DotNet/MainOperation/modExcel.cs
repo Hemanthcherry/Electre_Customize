@@ -9,12 +9,17 @@ using Microsoft.Office.Interop.Excel;
 using Range = Microsoft.Office.Interop.Excel.Range;
 using System.Windows.Forms;
 using Application = Microsoft.Office.Interop.Excel.Application;
+using Electre_Customize_DotNet.Helpers.CableList;
+using Electre_Customize_DotNet.Helpers.Continuity;
+using Electre_Customize_DotNet.Helpers.Global;
+using Electre_Customize_DotNet.Helpers.PowerOn;
 using Electre_Customize_DotNet.Objects;
 using Electre_Customize_DotNet.Logs;
 using Electre_Customize_DotNet.Reports;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 using Electre_Customize_DotNet.ReportUI;
 using System.Configuration;
+using System.Diagnostics;
 using System.IO;
 
 namespace Electre_Customize_DotNet.MainOperation
@@ -47,21 +52,18 @@ namespace Electre_Customize_DotNet.MainOperation
         public string sCOMPONENT_CATALOG_File;
         public string OOTBPaneltotalWeight;
         public static Dictionary<string, List<string>> matchedComponents = new Dictionary<string, List<string>>();
-        // This method checks if the Excel instance is created or not. If the Excel instance is null, it tries to create a new Excel instance
+        private XlCalculation _savedCalculation;
+        private bool _excelSuspended;
+        private List<PowerOnExcelBlock> _powerOnBlocks;
 
         public void InitiateExcel()
         {
             try
             {
-                // Try to get a running instance of Excel
-                ExcelApp = GetRunningExcelApplication();
-                if (ExcelApp == null)
-                {
-                    ExcelApp = new Application();
-                }
+                ExcelApp = new Application();
                 ExcelApp.Visible = false;
-                //ExcelApp.Visible = true;
-
+                ExcelApp.DisplayAlerts = false;
+                SuspendExcelUpdates();
             }
             catch (Exception ex)
             {
@@ -70,28 +72,90 @@ namespace Electre_Customize_DotNet.MainOperation
 
             }
         }
-        // this method create and return Excel Instance
-        private Application GetRunningExcelApplication()
+
+        private void SuspendExcelUpdates()
         {
+            if (ExcelApp == null || _excelSuspended)
+                return;
+
             try
             {
-                // Try to get a running instance of Excel via ROT (Running Object Table)
-                const string progId = "Excel.Application";
-                Type excelType = Type.GetTypeFromProgID(progId);
-                dynamic excelInstance = Activator.CreateInstance(excelType);
-                return excelInstance as Application;
+                _savedCalculation = ExcelApp.Calculation;
             }
-            catch (COMException ex)
+            catch
             {
-                // No running instance found
-                MessageBox.Show("Exce ##01: "+ ex.Message);
-                return null;
+                _savedCalculation = XlCalculation.xlCalculationAutomatic;
             }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Error getting running Excel instance: " + ex.Message);
-                return null;
-            }
+
+            ExcelApp.ScreenUpdating = false;
+            ExcelApp.EnableEvents = false;
+            ExcelApp.DisplayAlerts = false;
+            ExcelApp.Calculation = XlCalculation.xlCalculationManual;
+            try { ExcelApp.PrintCommunication = false; } catch { }
+            try { ExcelApp.Interactive = false; } catch { }
+            try { ExcelApp.AskToUpdateLinks = false; } catch { }
+            try { ExcelApp.EnableAnimations = false; } catch { }
+            _excelSuspended = true;
+        }
+
+        private void ResumeExcelUpdates()
+        {
+            if (ExcelApp == null || !_excelSuspended)
+                return;
+
+            try { ExcelApp.PrintCommunication = true; } catch { }
+            try { ExcelApp.Calculation = _savedCalculation; } catch { }
+            try { ExcelApp.EnableAnimations = true; } catch { }
+            try { ExcelApp.Interactive = true; } catch { }
+            ExcelApp.EnableEvents = true;
+            ExcelApp.ScreenUpdating = true;
+            _excelSuspended = false;
+        }
+
+        private static void ReleaseCom(object comObj)
+        {
+            ExcelRangeHelper.ReleaseCom(comObj);
+        }
+
+        private void DiscardReportWorkbook(bool save = false)
+        {
+            if (ReportWB == null)
+                return;
+            try { ReportWB.Close(save); } catch { }
+            ReleaseCom(ReportWS);
+            ReleaseCom(ReportWB);
+            ReportWS = null;
+            ReportWB = null;
+        }
+
+        private static string ToA1(int row, int col)
+        {
+            return ExcelRangeHelper.ToA1(row, col);
+        }
+
+        private Worksheet? FindSheetByName(Workbook workbook, string sheetName, bool ignoreCase = true)
+        {
+            return ExcelSheetOps.FindByName(workbook, sheetName, ignoreCase);
+        }
+
+        private void WriteBlock(Worksheet ws, int startRow, int startCol, object[,] block)
+        {
+            ExcelSheetOps.WriteBlock(ws, startRow, startCol, block);
+        }
+
+        private void UngroupSheets()
+        {
+            ExcelSheetOps.Ungroup(ReportWB);
+        }
+
+        private void SelectSheetGroup(int fromSheet, int toSheet)
+        {
+            ExcelSheetOps.SelectGroup(ReportWB, fromSheet, toSheet);
+        }
+
+        private void ClearCutCopyMode()
+        {
+            ExcelSheetOps.ClearCutCopyMode(ExcelApp);
         }
 
         // this method creates Excel Workbook for megger
@@ -99,40 +163,36 @@ namespace Electre_Customize_DotNet.MainOperation
         {
             try
             {
-                ReportWB = ExcelApp.Workbooks.Add();
+                SuspendExcelUpdates();
                 ExcelApp.DisplayAlerts = false;
+                DiscardReportWorkbook();
 
-                // Add a new sheet and name it
-                ReportWB.Sheets.Add(After: ReportWB.Sheets[ReportWB.Sheets.Count]);
-                Worksheet newSheet1 = (Worksheet)ReportWB.Sheets[ReportWB.Sheets.Count];
-                newSheet1.Name = iSheetName1;
+                string[] sheetNames =
+                {
+                    iSheetName1, iSheetName2, iSheetName3, iSheetName4,
+                    iSheetName5, iSheetName6, iSheetName7
+                };
 
-                ReportWB.Sheets.Add(After: ReportWB.Sheets[ReportWB.Sheets.Count]);
-                Worksheet newSheet2 = (Worksheet)ReportWB.Sheets[ReportWB.Sheets.Count];
-                newSheet2.Name = iSheetName2;
-
-                ReportWB.Sheets.Add(After: ReportWB.Sheets[ReportWB.Sheets.Count]);
-                Worksheet newSheet3 = (Worksheet)ReportWB.Sheets[ReportWB.Sheets.Count];
-                newSheet3.Name = iSheetName3;
-
-                ReportWB.Sheets.Add(After: ReportWB.Sheets[ReportWB.Sheets.Count]);
-                Worksheet newSheet4 = (Worksheet)ReportWB.Sheets[ReportWB.Sheets.Count];
-                newSheet4.Name = iSheetName4;
-
-                ReportWB.Sheets.Add(After: ReportWB.Sheets[ReportWB.Sheets.Count]);
-                Worksheet newSheet5 = (Worksheet)ReportWB.Sheets[ReportWB.Sheets.Count];
-                newSheet5.Name = iSheetName5;
-
-                ReportWB.Sheets.Add(After: ReportWB.Sheets[ReportWB.Sheets.Count]);
-                Worksheet newSheet6 = (Worksheet)ReportWB.Sheets[ReportWB.Sheets.Count];
-                newSheet6.Name = iSheetName6;
-
-                ReportWB.Sheets.Add(After: ReportWB.Sheets[ReportWB.Sheets.Count]);
-                Worksheet newSheet7 = (Worksheet)ReportWB.Sheets[ReportWB.Sheets.Count];
-                newSheet7.Name = iSheetName7;
-
-                // Delete default sheets
-                DeleteDefaultSheets();
+                try
+                {
+                    ReportWB = ExcelApp.Workbooks.Add(XlWBATemplate.xlWBATWorksheet);
+                    ((Worksheet)ReportWB.Sheets[1]).Name = sheetNames[0];
+                    for (int i = 1; i < sheetNames.Length; i++)
+                    {
+                        Worksheet added = (Worksheet)ReportWB.Sheets.Add(After: ReportWB.Sheets[ReportWB.Sheets.Count]);
+                        added.Name = sheetNames[i];
+                    }
+                }
+                catch
+                {
+                    ReportWB = ExcelApp.Workbooks.Add();
+                    for (int i = 0; i < sheetNames.Length; i++)
+                    {
+                        Worksheet added = (Worksheet)ReportWB.Sheets.Add(After: ReportWB.Sheets[ReportWB.Sheets.Count]);
+                        added.Name = sheetNames[i];
+                    }
+                    DeleteDefaultSheets();
+                }
 
                 // Save the workbook
                 string reportPath = Path.Combine(GlobalVar.ReportFolderGlobal, reportType);
@@ -241,7 +301,9 @@ namespace Electre_Customize_DotNet.MainOperation
             ReportAppendRow6 = 1;
             try
             {
-                ReportWB = ExcelApp.Workbooks.Open(workbookPath);
+                SuspendExcelUpdates();
+                if (!IsWorkbookOpen(workbookPath))
+                    ReportWB = ExcelApp.Workbooks.Open(workbookPath);
 
                 foreach (Worksheet sheet in ReportWB.Sheets)
                 {
@@ -257,16 +319,16 @@ namespace Electre_Customize_DotNet.MainOperation
 
                         }
 
-                        // Set header cells
-                        ReportWS.Cells[ReportAppendRow, 1].Value = "Component Name";
-                        ReportWS.Cells[ReportAppendRow, 2].Value = "Part Numbers";
-                        // Format the header row
+                        object[,] ccHeader = new object[1, 2];
+                        ccHeader[0, 0] = "Component Name";
+                        ccHeader[0, 1] = "Part Numbers";
+                        WriteBlock(ReportWS, ReportAppendRow, 1, ccHeader);
                         Range headerRange = ReportWS.Range["A1", "B1"];
                         headerRange.Font.Bold = true;
+                        ReleaseCom(headerRange);
 
-                        // Set column widths
-                        ReportWS.Columns["A"].ColumnWidth = 20;
-                        ReportWS.Columns["B"].ColumnWidth = 20;
+                        ((Range)ReportWS.Columns["A"]).ColumnWidth = 20;
+                        ((Range)ReportWS.Columns["B"]).ColumnWidth = 20;
 
                         ReportAppendRow++;
 
@@ -282,18 +344,17 @@ namespace Electre_Customize_DotNet.MainOperation
                             Logging.Error("Failed to access the active sheet.");
                             return false;
                         }
-                        // Set header cells
-                        ReportWS1.Cells[ReportAppendRow1, 1].Value = "Connectors";
-                        ReportWS1.Cells[ReportAppendRow1, 2].Value = "Pins";
+                        object[,] pinHeader = new object[1, 2];
+                        pinHeader[0, 0] = "Connectors";
+                        pinHeader[0, 1] = "Pins";
+                        WriteBlock(ReportWS1, ReportAppendRow1, 1, pinHeader);
 
-
-                        // Format the header row
                         Range headerRange = ReportWS1.Range["A1", "B1"];
                         headerRange.Font.Bold = true;
+                        ReleaseCom(headerRange);
 
-                        // Set column widths
-                        ReportWS1.Columns["A"].ColumnWidth = 20;
-                        ReportWS1.Columns["B"].ColumnWidth = 15;
+                        ((Range)ReportWS1.Columns["A"]).ColumnWidth = 20;
+                        ((Range)ReportWS1.Columns["B"]).ColumnWidth = 15;
                         ReportAppendRow1++;
 
                     }
@@ -309,50 +370,43 @@ namespace Electre_Customize_DotNet.MainOperation
                             return false;
                         }
 
-                        // Write text in the first merged cells
-                        ReportWS2.Cells[ReportAppendRow2, 1].Value = "From"; // Column A
-                        ReportWS2.Cells[ReportAppendRow2, 3].Value = "To";   // Column C
+                        object[,] fromTo = new object[1, 4];
+                        fromTo[0, 0] = "From";
+                        fromTo[0, 2] = "To";
+                        WriteBlock(ReportWS2, ReportAppendRow2, 1, fromTo);
 
-                        // Merge Column A and B for "From"
                         Range fromRange = ReportWS2.Range["A" + ReportAppendRow2, "B" + ReportAppendRow2];
-
-                        // Merge Column C and D for "To"
                         Range toRange = ReportWS2.Range["C" + ReportAppendRow2, "D" + ReportAppendRow2];
-                        // Merge the cells
                         fromRange.Merge();
                         toRange.Merge();
 
-                        // Apply formatting for From
                         fromRange.Font.Bold = true;
                         fromRange.HorizontalAlignment = Excel.XlHAlign.xlHAlignCenter;
                         fromRange.VerticalAlignment = Excel.XlVAlign.xlVAlignCenter;
 
-                        // Apply formatting for To
                         toRange.Font.Bold = true;
                         toRange.HorizontalAlignment = Excel.XlHAlign.xlHAlignCenter;
                         toRange.VerticalAlignment = Excel.XlVAlign.xlVAlignCenter;
+                        ReleaseCom(fromRange);
+                        ReleaseCom(toRange);
 
-
-                        // Set subheaders below "From" and "To"
                         ReportAppendRow2++;
 
-                        ReportWS2.Cells[ReportAppendRow2, 1].Value = "Connector No";
-                        ReportWS2.Cells[ReportAppendRow2, 2].Value = "Pin No";
-                        ReportWS2.Cells[ReportAppendRow2, 3].Value = "Connector No";
-                        ReportWS2.Cells[ReportAppendRow2, 4].Value = "Pin No";
+                        object[,] subHeader = new object[1, 4];
+                        subHeader[0, 0] = "Connector No";
+                        subHeader[0, 1] = "Pin No";
+                        subHeader[0, 2] = "Connector No";
+                        subHeader[0, 3] = "Pin No";
+                        WriteBlock(ReportWS2, ReportAppendRow2, 1, subHeader);
 
-
-                        // Format the header row
                         Range headerRange = ReportWS2.Range["A2", "D2"];
                         headerRange.Font.Bold = true;
+                        ReleaseCom(headerRange);
 
-                        // Set column widths for readability
-
-                        ReportWS2.Columns["A"].ColumnWidth = 15; // Connector No (From)
-                        ReportWS2.Columns["B"].ColumnWidth = 10; // Pin No (From)
-                        ReportWS2.Columns["C"].ColumnWidth = 15; // Connector No (To)
-                        ReportWS2.Columns["D"].ColumnWidth = 10; // Pin No (To)
-
+                        ((Range)ReportWS2.Columns["A"]).ColumnWidth = 15;
+                        ((Range)ReportWS2.Columns["B"]).ColumnWidth = 10;
+                        ((Range)ReportWS2.Columns["C"]).ColumnWidth = 15;
+                        ((Range)ReportWS2.Columns["D"]).ColumnWidth = 10;
 
                         ReportAppendRow2++; // Move to the next row for data
                     }
@@ -368,20 +422,19 @@ namespace Electre_Customize_DotNet.MainOperation
 
                         }
 
-                        // Set header cells
-                        ReportWS3.Cells[ReportAppendRow3, 1].Value = "SN";
-                        ReportWS3.Cells[ReportAppendRow3, 2].Value = "Connectors";
-                        ReportWS3.Cells[ReportAppendRow3, 3].Value = "Pins";
+                        object[,] exHeader = new object[1, 3];
+                        exHeader[0, 0] = "SN";
+                        exHeader[0, 1] = "Connectors";
+                        exHeader[0, 2] = "Pins";
+                        WriteBlock(ReportWS3, ReportAppendRow3, 1, exHeader);
 
-                        // Format the header row
                         Range headerRange = ReportWS3.Range["A1", "C1"];
                         headerRange.Font.Bold = true;
+                        ReleaseCom(headerRange);
 
-                        // Set column widths
-                        ReportWS3.Columns["A"].ColumnWidth = 10;
-                        ReportWS3.Columns["B"].ColumnWidth = 20;
-                        ReportWS3.Columns["C"].ColumnWidth = 15;
-
+                        ((Range)ReportWS3.Columns["A"]).ColumnWidth = 10;
+                        ((Range)ReportWS3.Columns["B"]).ColumnWidth = 20;
+                        ((Range)ReportWS3.Columns["C"]).ColumnWidth = 15;
 
                         ReportAppendRow3++;
 
@@ -733,16 +786,27 @@ namespace Electre_Customize_DotNet.MainOperation
         {
             try
             {
-                ReportWB = ExcelApp.Workbooks.Add();
+                SuspendExcelUpdates();
                 ExcelApp.DisplayAlerts = false;
+                DiscardReportWorkbook();
 
-                // Add a new sheet and name it
-                ReportWB.Sheets.Add(After: ReportWB.Sheets[ReportWB.Sheets.Count]);
-                Worksheet newSheet = (Worksheet)ReportWB.Sheets[ReportWB.Sheets.Count];
-                newSheet.Name = iSheetName;
+                try
+                {
+                    ReportWB = ExcelApp.Workbooks.Add(XlWBATemplate.xlWBATWorksheet);
+                }
+                catch
+                {
+                    ReportWB = ExcelApp.Workbooks.Add();
+                    ReportWB.Sheets.Add(After: ReportWB.Sheets[ReportWB.Sheets.Count]);
+                    Worksheet added = (Worksheet)ReportWB.Sheets[ReportWB.Sheets.Count];
+                    added.Name = iSheetName;
+                    DeleteDefaultSheets();
+                }
 
-                // Delete default sheets
-                DeleteDefaultSheets();
+                Worksheet newSheet = (Worksheet)ReportWB.Sheets[1];
+                if (newSheet.Name != iSheetName)
+                    newSheet.Name = iSheetName;
+                ReportWS = newSheet;
 
                 // Save the workbook
                 string reportPath = Path.Combine(GlobalVar.ReportFolderGlobal, reportType);
@@ -784,7 +848,9 @@ namespace Electre_Customize_DotNet.MainOperation
 
             try
             {
-                ReportWB = ExcelApp.Workbooks.Open(workbookPath);
+                SuspendExcelUpdates();
+                if (!IsWorkbookOpen(workbookPath))
+                    ReportWB = ExcelApp.Workbooks.Open(workbookPath);
 
                 ReportWS = ReportWB.ActiveSheet as Worksheet;
 
@@ -794,37 +860,35 @@ namespace Electre_Customize_DotNet.MainOperation
                     return false;
                 }
 
-                // Set header cells
-                ReportWS.Cells[ReportAppendRow, 1].Value = "FROM CONN";
-                ReportWS.Cells[ReportAppendRow, 2].Value = "FROM PIN";
-                ReportWS.Cells[ReportAppendRow, 3].Value = "TO CONN";
-                ReportWS.Cells[ReportAppendRow, 4].Value = "TO PIN";
-                ReportWS.Cells[ReportAppendRow, 5].Value = "WIRE CODE";
-                ReportWS.Cells[ReportAppendRow, 6].Value = "WIRE TYPE";
-                ReportWS.Cells[ReportAppendRow, 7].Value = "LENGTH";
-                ReportWS.Cells[ReportAppendRow, 8].Value = "RD";
-                ReportWS.Cells[ReportAppendRow, 9].Value = "LD";
-                ReportWS.Cells[ReportAppendRow, 10].Value = "NERD";
-                ReportWS.Cells[ReportAppendRow, 11].Value = "Group Number";
-                //  ReportWS.Cells[ReportAppendRow, "Shunt"].Value = "Shunt"; 
-                // Uncomment if Shunt is required
+                object[,] header = new object[1, 11];
+                header[0, 0] = "FROM CONN";
+                header[0, 1] = "FROM PIN";
+                header[0, 2] = "TO CONN";
+                header[0, 3] = "TO PIN";
+                header[0, 4] = "WIRE CODE";
+                header[0, 5] = "WIRE TYPE";
+                header[0, 6] = "LENGTH";
+                header[0, 7] = "RD";
+                header[0, 8] = "LD";
+                header[0, 9] = "NERD";
+                header[0, 10] = "Group Number";
+                WriteBlock(ReportWS, ReportAppendRow, 1, header);
 
-                // Format the header row
                 Range headerRange = ReportWS.Range["A1", "K1"];
                 headerRange.Font.Bold = true;
+                ReleaseCom(headerRange);
 
-                // Set column widths
-                ReportWS.Columns["A"].ColumnWidth = 15;
-                ReportWS.Columns["B"].ColumnWidth = 15;
-                ReportWS.Columns["C"].ColumnWidth = 15;
-                ReportWS.Columns["D"].ColumnWidth = 15;
-                ReportWS.Columns["E"].ColumnWidth = 20;
-                ReportWS.Columns["F"].ColumnWidth = 10;
-                ReportWS.Columns["G"].ColumnWidth = 10;
-                ReportWS.Columns["H"].ColumnWidth = 20;
-                ReportWS.Columns["I"].ColumnWidth = 15;
-                ReportWS.Columns["J"].ColumnWidth = 10;
-                ReportWS.Columns["K"].ColumnWidth = 15;
+                ((Range)ReportWS.Columns["A"]).ColumnWidth = 15;
+                ((Range)ReportWS.Columns["B"]).ColumnWidth = 15;
+                ((Range)ReportWS.Columns["C"]).ColumnWidth = 15;
+                ((Range)ReportWS.Columns["D"]).ColumnWidth = 15;
+                ((Range)ReportWS.Columns["E"]).ColumnWidth = 20;
+                ((Range)ReportWS.Columns["F"]).ColumnWidth = 10;
+                ((Range)ReportWS.Columns["G"]).ColumnWidth = 10;
+                ((Range)ReportWS.Columns["H"]).ColumnWidth = 20;
+                ((Range)ReportWS.Columns["I"]).ColumnWidth = 15;
+                ((Range)ReportWS.Columns["J"]).ColumnWidth = 10;
+                ((Range)ReportWS.Columns["K"]).ColumnWidth = 15;
                 ReportAppendRow++;
 
                 Logging.Info($"wireList report Header created for {workbookPath}");
@@ -845,9 +909,11 @@ namespace Electre_Customize_DotNet.MainOperation
 
             try
             {
-                ReportWB = ExcelApp.Workbooks.Open(workbookPath);
+                SuspendExcelUpdates();
+                if (!IsWorkbookOpen(workbookPath))
+                    ReportWB = ExcelApp.Workbooks.Open(workbookPath);
 
-                ReportWS = ReportWB.ActiveSheet;
+                ReportWS = ReportWB.ActiveSheet as Worksheet;
 
                 if (ReportWS == null)
                 {
@@ -856,17 +922,17 @@ namespace Electre_Customize_DotNet.MainOperation
                     return false;
                 }
 
-                // Set header cells
-                ReportWS.Cells[ReportAppendRow, 1].Value = "Component Name";
-                ReportWS.Cells[ReportAppendRow, 2].Value = "Part Number";
-
+                object[,] header = new object[1, 2];
+                header[0, 0] = "Component Name";
+                header[0, 1] = "Part Number";
+                WriteBlock(ReportWS, ReportAppendRow, 1, header);
 
                 Range headerRange = ReportWS.Range["A1","B1"];
                 headerRange.Font.Bold = true;
+                ReleaseCom(headerRange);
 
-                // Set column widths
-                ReportWS.Columns["A"].ColumnWidth = 20;
-                ReportWS.Columns["B"].ColumnWidth = 20;
+                ((Range)ReportWS.Columns["A"]).ColumnWidth = 20;
+                ((Range)ReportWS.Columns["B"]).ColumnWidth = 20;
 
                 ReportAppendRow++;
 
@@ -881,6 +947,126 @@ namespace Electre_Customize_DotNet.MainOperation
             }
         }
 
+        public string WriteComponentBreakdownWorkbook(string iWorkbookName, string iSheetName, string reportType, object[,] data, int dataRows)
+        {
+            object[,] header = new object[1, 10];
+            header[0, 0] = "FROM CONN";
+            header[0, 1] = "FROM PIN";
+            header[0, 2] = "TO CONN";
+            header[0, 3] = "TO PIN";
+            header[0, 4] = "WIRE CODE";
+            header[0, 5] = "WIRE TYPE";
+            header[0, 6] = "LENGTH";
+            header[0, 7] = "RD";
+            header[0, 8] = "LD";
+            header[0, 9] = " NERD";
+            double[] widths = { 14.78, 14.78, 14, 16.67, 21.33, 14.11, 10, 20, 15, 10 };
+            return WriteSingleWirelistFile(iWorkbookName, iSheetName, reportType, data, dataRows, header, widths, "J");
+        }
+
+        public string WriteLoomWithoutHalWorkbook(string iWorkbookName, string iSheetName, string reportType, object[,] data, int dataRows)
+        {
+            object[,] header = new object[1, 11];
+            header[0, 0] = "FROM CONN";
+            header[0, 1] = "FROM PIN";
+            header[0, 2] = "TO CONN";
+            header[0, 3] = "TO PIN";
+            header[0, 4] = "WIRE CODE";
+            header[0, 5] = "WIRE TYPE";
+            header[0, 6] = "LENGTH";
+            header[0, 7] = "RD";
+            header[0, 8] = "LD";
+            header[0, 9] = "NERD";
+            header[0, 10] = "Group Number";
+            double[] widths = { 15, 15, 15, 15, 20, 10, 10, 20, 15, 10, 15 };
+            return WriteSingleWirelistFile(iWorkbookName, iSheetName, reportType, data, dataRows, header, widths, "K");
+        }
+
+        private string WriteSingleWirelistFile(
+            string iWorkbookName,
+            string iSheetName,
+            string reportType,
+            object[,] data,
+            int dataRows,
+            object[,] header,
+            double[] columnWidths,
+            string lastColLetter)
+        {
+            try
+            {
+                SuspendExcelUpdates();
+                ExcelApp.DisplayAlerts = false;
+                DiscardReportWorkbook();
+
+                try
+                {
+                    ReportWB = ExcelApp.Workbooks.Add(XlWBATemplate.xlWBATWorksheet);
+                }
+                catch
+                {
+                    ReportWB = ExcelApp.Workbooks.Add();
+                    ReportWB.Sheets.Add(After: ReportWB.Sheets[ReportWB.Sheets.Count]);
+                    Worksheet added = (Worksheet)ReportWB.Sheets[ReportWB.Sheets.Count];
+                    added.Name = iSheetName;
+                    DeleteDefaultSheets();
+                }
+
+                Worksheet newSheet = (Worksheet)ReportWB.Sheets[1];
+                if (newSheet.Name != iSheetName)
+                    newSheet.Name = iSheetName;
+                ReportWS = newSheet;
+
+                ReportAppendRow = 1;
+                WriteBlock(ReportWS, 1, 1, header);
+
+                Range headerRange = ReportWS.Range["A1", lastColLetter + "1"];
+                headerRange.Font.Bold = true;
+                ReleaseCom(headerRange);
+
+                string[] colLetters = { "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K" };
+                int widthCount = Math.Min(columnWidths.Length, colLetters.Length);
+                for (int i = 0; i < widthCount; i++)
+                    ((Range)ReportWS.Columns[colLetters[i]]).ColumnWidth = columnWidths[i];
+
+                if (dataRows > 0 && data != null)
+                    WriteBlock(ReportWS, 2, 1, data);
+
+                int lastRow = Math.Max(1, 1 + dataRows);
+                Range dataRange = ReportWS.Range["A1", lastColLetter + lastRow];
+                FormatRange(dataRange);
+                ReleaseCom(dataRange);
+
+                string reportPath = Path.Combine(GlobalVar.ReportFolderGlobal, reportType);
+                if (!Directory.Exists(reportPath))
+                    Directory.CreateDirectory(reportPath);
+
+                string workbookPath = Path.Combine(reportPath, iWorkbookName);
+                ReportWB.SaveAs(workbookPath, XlFileFormat.xlExcel8);
+                string resultPath = workbookPath + ".xls";
+                if (!File.Exists(resultPath))
+                    return "null";
+
+                Logging.Info($"Wirelist empty Report {workbookPath}.xls");
+                return resultPath;
+            }
+            catch (COMException ex)
+            {
+                MessageBox.Show("Excel ##04: "+ ex.Message);
+                Logging.Info("Error interacting with Excel: " + ex.Message);
+                return "null";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Excel ##05: "+ ex.Message);
+                Logging.Info("An error occurred: " + ex.Message);
+                return "null";
+            }
+            finally
+            {
+                DiscardReportWorkbook(save: false);
+            }
+        }
+
         #region adding data to excel
 
         // this method Append data to EXcel sheets for megger
@@ -888,6 +1074,7 @@ namespace Electre_Customize_DotNet.MainOperation
         {
             try
             {
+                SuspendExcelUpdates();
                 Logging.Info($"Started writing data to sheet: {Reportws.Name}");
 
                 if (iarr == null || iarr.Length == 0 || iarr.GetLength(0) == 0 || iarr.GetLength(1) == 0)
@@ -901,28 +1088,47 @@ namespace Electre_Customize_DotNet.MainOperation
                 if (Reportws.Name == "Continuity Components")
                 {
                     var matchedComponents = Convert2DArrayToDictionary(iarr);
+                    var lines = new List<object[]>();
+                    var merges = new List<(int StartRow, int PartCount)>();
+                    int excelRow = row;
 
                     foreach (var component in matchedComponents)
                     {
                         int partCount = component.Value.Count;
+                        if (partCount <= 0)
+                            continue;
 
-                        if (partCount > 0)
+                        int startRow = excelRow;
+                        for (int p = 0; p < partCount; p++)
                         {
-                            Reportws.Cells[row, 1].Value = component.Key;
-                            Reportws.Cells[row, 2].Value = component.Value[0];
+                            object[] line = new object[2];
+                            line[0] = p == 0 ? component.Key : "";
+                            line[1] = component.Value[p];
+                            lines.Add(line);
+                            excelRow++;
+                        }
+                        merges.Add((startRow, partCount));
+                    }
 
-                            var mergeRange = Reportws.Range[Reportws.Cells[row, 1], Reportws.Cells[row + partCount - 1, 1]];
+                    if (lines.Count > 0)
+                    {
+                        object[,] block = new object[lines.Count, 2];
+                        for (int r = 0; r < lines.Count; r++)
+                        {
+                            block[r, 0] = lines[r][0];
+                            block[r, 1] = lines[r][1];
+                        }
+                        WriteBlock(Reportws, row, 1, block);
+
+                        for (int m = 0; m < merges.Count; m++)
+                        {
+                            var merge = merges[m];
+                            Range mergeRange = Reportws.Range[
+                                ToA1(merge.StartRow, 1) + ":" + ToA1(merge.StartRow + merge.PartCount - 1, 1)];
                             mergeRange.Merge();
                             mergeRange.HorizontalAlignment = Excel.XlHAlign.xlHAlignCenter;
                             mergeRange.VerticalAlignment = Excel.XlVAlign.xlVAlignCenter;
-
-                            for (int i = 1; i < partCount; i++)
-                            {
-                                row++;
-                                Reportws.Cells[row, 2].Value = component.Value[i];
-                            }
-
-                            row++;
+                            ReleaseCom(mergeRange);
                         }
                     }
 
@@ -933,25 +1139,30 @@ namespace Electre_Customize_DotNet.MainOperation
                 else if (Reportws.Name == "Pin List")
                 {
                     int tillCol = iTillColumn != 0 ? iTillColumn : iarr.GetLength(1);
-
-                    for (int i = 0; i < iarr.GetLength(0); i++)
+                    int rowsToWrite = iarr.GetLength(0);
+                    if (iarr.GetLength(0) > 3)
                     {
-                        for (int j = 0; j < tillCol; j++)
+                        for (int i = 0; i < iarr.GetLength(0); i++)
                         {
-                            Reportws.Cells[row, j + 1].Value = iarr[i, j];
-                            Reportws.Cells[row, j + 1].HorizontalAlignment = Excel.XlHAlign.xlHAlignCenter;
-                            Reportws.Cells[row, j + 1].VerticalAlignment = Excel.XlVAlign.xlVAlignCenter;
+                            if (CheckIfBlankRow(iarr, i))
+                            {
+                                rowsToWrite = i + 1;
+                                break;
+                            }
                         }
-
-                        if (iarr.GetLength(0) > 3 && CheckIfBlankRow(iarr, i))
-                        {
-                            break;
-                        }
-
-                        row++;
                     }
 
-                    Range range = Reportws.Range["A1", $"B{row - 1}"];
+                    if (rowsToWrite > 0 && tillCol > 0)
+                    {
+                        object[,] block = new object[rowsToWrite, tillCol];
+                        for (int r = 0; r < rowsToWrite; r++)
+                            for (int c = 0; c < tillCol; c++)
+                                block[r, c] = iarr[r, c];
+                        WriteBlock(Reportws, row, 1, block);
+                        row += rowsToWrite;
+                    }
+
+                    Range range = Reportws.Range["A1", $"B{Math.Max(1, row - 1)}"];
                     FormatRange(range);
                     ReportWB.Save();
 
@@ -963,27 +1174,28 @@ namespace Electre_Customize_DotNet.MainOperation
                 {
                     int tillCol = iTillColumn != 0 ? iTillColumn : iarr.GetLength(1);
                     int row1 = 3; // START from Row 3 (row 1 = merged header, row 2 = subheaders)
-
+                    var compact = new List<object[]>();
                     for (int i = 0; i < iarr.GetLength(0); i++)
                     {
-                        if (CheckIfBlankRow(iarr, i)) continue;
-                        if (IsRowBlank(iarr, i)) continue;
+                        if (IsRowBlank(iarr, i) || CheckIfBlankRow(iarr, i))
+                            continue;
+                        var line = new object[tillCol];
                         for (int j = 0; j < tillCol; j++)
-                        {
-                            Reportws.Cells[row1, j + 1].Value = iarr[i, j];
-                            Reportws.Cells[row1, j + 1].HorizontalAlignment = Excel.XlHAlign.xlHAlignCenter;
-                            Reportws.Cells[row1, j + 1].VerticalAlignment = Excel.XlVAlign.xlVAlignCenter;
-                        }
-
-                        if (iarr.GetLength(0) > 3 && CheckIfBlankRow(iarr, i))
-                        {
-                            break;
-                        }
-
-                        row1++;
+                            line[j] = iarr[i, j];
+                        compact.Add(line);
                     }
 
-                    Range range = Reportws.Range["A1", $"D{row - 1}"];
+                    if (compact.Count > 0 && tillCol > 0)
+                    {
+                        object[,] block = new object[compact.Count, tillCol];
+                        for (int r = 0; r < compact.Count; r++)
+                            for (int c = 0; c < tillCol; c++)
+                                block[r, c] = compact[r][c];
+                        WriteBlock(Reportws, row1, 1, block);
+                        row1 += compact.Count;
+                    }
+
+                    Range range = Reportws.Range["A1", $"D{Math.Max(1, row - 1)}"];
                     FormatRange(range);
                     Excel.Range rangeToMerge = Reportws.Range["A1", "B1"];
                     rangeToMerge.Merge();
@@ -998,33 +1210,33 @@ namespace Electre_Customize_DotNet.MainOperation
                 else if (Reportws.Name == "Exception")
                 {
                     int tillCol = iTillColumn != 0 ? iTillColumn : iarr.GetLength(1);
-
-                    for (int i = 0; i < iarr.GetLength(0); i++)
+                    int rowsToWrite = iarr.GetLength(0);
+                    if (iarr.GetLength(0) > 3)
                     {
-                        if (iarr.GetLength(0) > 3 && CheckIfBlankRow(iarr, i))
+                        for (int i = 0; i < iarr.GetLength(0); i++)
                         {
-                            break;
+                            if (CheckIfBlankRow(iarr, i))
+                            {
+                                rowsToWrite = i;
+                                break;
+                            }
                         }
-
-                        // Column A – Serial Number
-                        Reportws.Cells[row, 1].Value = iarr[i, 0]; // Use value from array directly
-                        Reportws.Cells[row, 1].HorizontalAlignment = Excel.XlHAlign.xlHAlignCenter;
-                        Reportws.Cells[row, 1].VerticalAlignment = Excel.XlVAlign.xlVAlignCenter;
-
-                        // Column B – ConnectorName
-                        Reportws.Cells[row, 2].Value = iarr[i, 1];
-                        Reportws.Cells[row, 2].HorizontalAlignment = Excel.XlHAlign.xlHAlignCenter;
-                        Reportws.Cells[row, 2].VerticalAlignment = Excel.XlVAlign.xlVAlignCenter;
-
-                        // Column C – PinNumber
-                        Reportws.Cells[row, 3].Value = iarr[i, 2];
-                        Reportws.Cells[row, 3].HorizontalAlignment = Excel.XlHAlign.xlHAlignCenter;
-                        Reportws.Cells[row, 3].VerticalAlignment = Excel.XlVAlign.xlVAlignCenter;
-
-                        row++;
                     }
 
-                    Range range = Reportws.Range["A1", $"C{row - 1}"];
+                    if (rowsToWrite > 0)
+                    {
+                        object[,] block = new object[rowsToWrite, 3];
+                        for (int i = 0; i < rowsToWrite; i++)
+                        {
+                            block[i, 0] = iarr[i, 0];
+                            block[i, 1] = iarr[i, 1];
+                            block[i, 2] = iarr[i, 2];
+                        }
+                        WriteBlock(Reportws, row, 1, block);
+                        row += rowsToWrite;
+                    }
+
+                    Range range = Reportws.Range["A1", $"C{Math.Max(1, row - 1)}"];
                     FormatRange(range);
 
                     ReportWB.Save();
@@ -1229,33 +1441,42 @@ namespace Electre_Customize_DotNet.MainOperation
         {
             try
             {                
-                int tillCol = iTillColumn != 0 ? iTillColumn : iarr.GetLength(1); // Determine the number of columns
+                int tillCol = iTillColumn != 0 ? iTillColumn : iarr.GetLength(1);
+                int rowCount = iarr.GetLength(0);
+                int rowsToWrite = rowCount;
 
-                for (int k = 0; k < iarr.GetLength(0); k++) // Loop through rows
+                bool compact = rowCount > 0 && !IsRowBlank(iarr, 0) && !IsRowBlank(iarr, rowCount - 1);
+                if (rowCount > 3 && !compact)
                 {
-                    for (int j = 0; j < tillCol; j++) // Loop through columns
-                    {                       
-                        // Populate cells in the worksheet
-                        ReportWS.Cells[ReportAppendRow, j + 1].Value = iarr[k, j];                       
-                    }
-                   
-                    ReportAppendRow++; // Move to the next row in the Excel sheet
-                   
-                    // Skip writing blank rows if certain conditions are met
-                    if (iarr.GetLength(0) > 3) // Check if array has more than 3 rows
+                    for (int k = 0; k < rowCount; k++)
                     {
-                        bool isBlankRow = CheckIfBlankRow(iarr, k);
-                        if (isBlankRow)
+                        if (CheckIfBlankRow(iarr, k))
                         {
+                            rowsToWrite = k + 1; // keep the first blank row, matching previous behaviour
                             break;
                         }
                     }
                 }
-                // Format the range in Excel
-                Range range = ReportWS.Range["A1", $"J{ReportAppendRow - 1}"];
+
+                if (rowsToWrite > 0 && tillCol > 0)
+                {
+                    object[,] block = new object[rowsToWrite, tillCol];
+                    for (int r = 0; r < rowsToWrite; r++)
+                    {
+                        for (int c = 0; c < tillCol; c++)
+                        {
+                            block[r, c] = iarr[r, c];
+                        }
+                    }
+
+                    int startRow = ReportAppendRow;
+                    WriteBlock(ReportWS, startRow, 1, block);
+                    ReportAppendRow = startRow + rowsToWrite;
+                }
+
+                Range range = ReportWS.Range["A1", $"J{Math.Max(1, ReportAppendRow - 1)}"];
                 FormatRange(range);
 
-                // Save the workbook
                 ReportWB.Save();
 
                 return ReportWS.Name;
@@ -1272,49 +1493,54 @@ namespace Electre_Customize_DotNet.MainOperation
         {
             try
             {
+                SuspendExcelUpdates();
                 int row = 2; // Starting from row 2, as row 1 contains headers ("Component Name" and "Part Number")
+                var lines = new List<object[]>();
+                var merges = new List<(int StartRow, int PartCount)>();
+                int excelRow = row;
 
-                // Loop through the dictionary and add component name and part number
                 foreach (var component in matchedComponents)
                 {
                     int partCount = component.Value.Count;
+                    if (partCount <= 0)
+                        continue;
 
-                    // If there are part numbers, populate the first row with the component name and merge cells
-                    if (partCount > 0)
+                    int startRow = excelRow;
+                    for (int p = 0; p < partCount; p++)
                     {
-                        // Populate "Component Name" in column 1 for the first part number
-                        ReportWS.Cells[row, 1].Value = component.Key;
+                        object[] line = new object[2];
+                        line[0] = p == 0 ? component.Key : "";
+                        line[1] = component.Value[p];
+                        lines.Add(line);
+                        excelRow++;
+                    }
+                    merges.Add((startRow, partCount));
+                }
 
-                        // Center align the text both horizontally and vertically for the merged cells in column 1
-                        var componentCell = ReportWS.Cells[row, 1];
-                        componentCell.HorizontalAlignment = Microsoft.Office.Interop.Excel.XlHAlign.xlHAlignCenter;
-                        componentCell.VerticalAlignment = Microsoft.Office.Interop.Excel.XlVAlign.xlVAlignCenter;
+                if (lines.Count > 0)
+                {
+                    object[,] block = new object[lines.Count, 2];
+                    for (int r = 0; r < lines.Count; r++)
+                    {
+                        block[r, 0] = lines[r][0];
+                        block[r, 1] = lines[r][1];
+                    }
+                    WriteBlock(ReportWS, row, 1, block);
 
-                        // Populate "Part Number" in column 2 for the first part number
-                        ReportWS.Cells[row, 2].Value = component.Value[0];
-
-                        // Merge the first column for the number of rows corresponding to part numbers
-                        ReportWS.Range[ReportWS.Cells[row, 1], ReportWS.Cells[row + partCount - 1, 1]].Merge();
-
-                        // Loop through the remaining part numbers and populate column 2 (Part Numbers)
-                        for (int i = 1; i < partCount; i++)
-                        {
-                            row++; // Move to the next row for the next part number
-
-                            // Leave the first column empty (it is merged, and should remain the same for this component)
-                            ReportWS.Cells[row, 1].Value = "";
-
-                            // Populate "Part Number" in column 2
-                            ReportWS.Cells[row, 2].Value = component.Value[i];
-                        }
-
-                        // Move to the next row after all part numbers for the current component are processed
-                        row++;
+                    for (int m = 0; m < merges.Count; m++)
+                    {
+                        var merge = merges[m];
+                        Range mergeRange = ReportWS.Range[
+                            ToA1(merge.StartRow, 1) + ":" + ToA1(merge.StartRow + merge.PartCount - 1, 1)];
+                        mergeRange.Merge();
+                        mergeRange.HorizontalAlignment = XlHAlign.xlHAlignCenter;
+                        mergeRange.VerticalAlignment = XlVAlign.xlVAlignCenter;
+                        ReleaseCom(mergeRange);
                     }
                 }
-                // Save the workbook
-                ReportWB.Save();
 
+                ReportWB.Save();
+                Logging.Info($"Continuity Components: rows={lines.Count}");
                 return ReportWS.Name;
             }
             catch (Exception ex)
@@ -1325,12 +1551,7 @@ namespace Electre_Customize_DotNet.MainOperation
             }
             finally
             {
-                // Close and release the workbook object
-                if (ReportWB != null)
-                {
-                    ReportWB.Close(true);
-                    Marshal.ReleaseComObject(ReportWB);
-                }
+                DiscardReportWorkbook(save: true);
             }
         }
 
@@ -1414,12 +1635,7 @@ namespace Electre_Customize_DotNet.MainOperation
             }
             finally
             {
-                if (ReportWB != null)
-                {
-                    ReportWB.Close(true);
-                    Marshal.ReleaseComObject(ReportWB);
-                }
-
+                DiscardReportWorkbook(save: true);
             }
         }
         /*public void SortWirelistWireNumber(int rowStart, int rowEnd) //commented on MAy 15th
@@ -1550,219 +1766,168 @@ namespace Electre_Customize_DotNet.MainOperation
 
         #region merging and Demerging
 
-        public void SubLoomMergeCellsWithaValue(object iFrom, object iTo, object iVal1, object iVal2, object iNumOfShieldRemToMerge, object iCableClassification)
+        public void SubLoomMergeCellsWithaValue(object iFrom, object iTo, object iVal1, object iVal2, object iNumOfShieldRemToMerge, object iCableClassification, Worksheet ws = null, object lengthValue = null)
         {
-            // Merge cells in column B and set value
-
-            Range rangeB = ReportWB.ActiveSheet.Range["B" + iFrom, "B" + iTo];
-            rangeB.Merge();
-            rangeB.Value = iVal1;
-
-            // Get value from the initial cell in column D and set for merged range
-            Range rangeDInitial = ReportWB.ActiveSheet.Range["D" + iFrom];
-            var sLength = rangeDInitial.Value;
-            Range rangeD = ReportWB.ActiveSheet.Range["D" + iFrom, "D" + iTo];
-            rangeD.Merge();
-            rangeD.Value = sLength;
-
-            // Merging cells in column K with conditional merging based on parameters           
-            Range rangeK;
-            if (Convert.ToInt32(iNumOfShieldRemToMerge) != 0 && iCableClassification == "Special")
-            {
-                rangeK = ReportWB.ActiveSheet.Range["K" + iFrom, "K" + ((int)iTo + (int)iNumOfShieldRemToMerge)];
-                rangeK.Merge();
-                rangeK.Value = ""; // or iVal2 if required
-            }
-            else
-            {
-                rangeK = ReportWB.ActiveSheet.Range["K" + iFrom, "K" + iTo];
-                rangeK.Merge();
-                rangeK.Value = iVal2;
-            }
+            ws ??= (Worksheet)ReportWB.ActiveSheet;
+            CableListMerges.MergeMe(ws, iFrom, iTo, iVal1, iVal2, iNumOfShieldRemToMerge, iCableClassification, lengthValue);
         }
 
-        public void SubLoomUNmergeCellsWithaValue(object iFrom, object iTo, object iVal1, object iVal2, object iCableClassification)
+        public void SubLoomUNmergeCellsWithaValue(object iFrom, object iTo, object iVal1, object iVal2, object iCableClassification, Worksheet ws = null)
         {
-            // Unmerge cells in column B and set alignment properties
-            Range rangeB = ReportWB.ActiveSheet.Range["B" + iFrom, "B" + iTo];
-            rangeB.MergeCells = false;
-            rangeB.HorizontalAlignment = XlHAlign.xlHAlignCenter;
-            rangeB.VerticalAlignment = XlVAlign.xlVAlignCenter;
-            rangeB.WrapText = true;
-            rangeB.Orientation = 0;
-            rangeB.AddIndent = false;
-            rangeB.IndentLevel = 0;
-            rangeB.ShrinkToFit = false;
-            rangeB.ReadingOrder = -5002;//reading replace for XlReadingOrder.xlContext
-            rangeB.Value = iVal1;
-
-            // Conditional merge and value setting for column K based on Cable Classification
-            Range rangeK = ReportWB.ActiveSheet.Range["K" + iFrom, "K" + iTo];
-            rangeK.Merge();
-
-            if (iCableClassification == "Normal")
-            {
-                rangeK.Value = iVal2;
-            }
-            else if (iCableClassification == "Special")
-            {
-                rangeK.Value = ""; // Empty value for "Special"
-            }
+            ws ??= (Worksheet)ReportWB.ActiveSheet;
+            CableListMerges.UnmergeRow(ws, iFrom, iVal1, iVal2, iCableClassification);
         }
         #endregion
+
+        private string PrepareCableListWorkbookFromTemplate(int numberOfSheetsRequired, bool useXlsx, string reportFilePath)
+        {
+            ExcelApp.DisplayAlerts = false;
+            Worksheet keep = FindSheetByName(ReportWB, "CABLE LIST") ?? FindSheetByName(ReportWB, "CL-1");
+            if (keep == null)
+                throw new InvalidOperationException("Sheet 'CABLE LIST' does not exist in the template workbook.");
+
+            ExcelSheetOps.KeepOnlyNamedSheet(ReportWB, keep);
+
+            Worksheet first = (Worksheet)ReportWB.Sheets[1];
+            if (first.Name != "CL-1")
+                first.Name = "CL-1";
+
+            first.Range["B47"].Value2 = DateTime.Now.Year;
+            first.Range["B3:D4"].FormulaR1C1 = "";
+            alignCellsXl(8, 46, first);
+
+            // Copy in native .xlsx — .xls compatibility mode makes Sheet.Copy very slow.
+            string xlsxWork = useXlsx
+                ? reportFilePath
+                : Path.Combine(Path.GetDirectoryName(reportFilePath) ?? "", Path.GetFileNameWithoutExtension(reportFilePath) + "_hal.work.xlsx");
+            if (!useXlsx && File.Exists(xlsxWork))
+                File.Delete(xlsxWork);
+            ReportWB.SaveAs(xlsxWork, XlFileFormat.xlOpenXMLWorkbook);
+
+            DuplicateTemplateSheets(numberOfSheetsRequired, "CL-");
+            return xlsxWork;
+        }
+
+        private void DuplicateTemplateSheets(int needed, string namePrefix)
+        {
+            ExcelSheetOps.DuplicateTemplateSheets(ExcelApp, ReportWB, needed, namePrefix);
+        }
+
+        private void ApplyCl1HeaderFormulas(Worksheet ws)
+        {
+            CableListHeaderFormulas.ApplyCl1Formulas(ws);
+        }
+
+        private void CopyRangeToSheetGroup(Worksheet source, string address, int fromSheet, int toSheet)
+        {
+            ExcelSheetOps.CopyRangeToSheetGroup(ExcelApp, ReportWB, source, address, fromSheet, toSheet);
+        }
+
+        private void ApplyStrikethroughRows(Worksheet ws, List<int> excelRows)
+        {
+            CableListStrikethrough.Apply(ExcelApp, ws, excelRows);
+        }
 
         public void GenerateHALReportFormat_CableList(object[,] iarr, string reportName, int numberOfSheetsRequired, int loomSheetRowReq, string reportType)
         {
             string templatePath = Environment.GetEnvironmentVariable("ELECTRE_CUSTOMIZE") + @"\system\CABLE_ReportFormat.xls";
+            var sw = Stopwatch.StartNew();
+            string workingCopy = null;
+            string workXlsx = null;
+            bool useXlsx = false;
 
             try
             {
-                ReportWB = ExcelApp.Workbooks.Add();
+                SuspendExcelUpdates();
                 ExcelApp.DisplayAlerts = false;
 
-                // Open the template workbook
-                TempWB = ExcelApp.Workbooks.Open(templatePath);
+                if (numberOfSheetsRequired < 1)
+                    numberOfSheetsRequired = 1;
 
                 string reportPath = Path.Combine(GlobalVar.ReportFolderGlobal, reportType);
-
                 if (!Directory.Exists(reportPath))
-                {
                     Directory.CreateDirectory(reportPath);
-                }
 
-                string reportFilePath = Path.Combine(reportPath, reportName + ".xls");
+                useXlsx = numberOfSheetsRequired > 250;
+                string reportFilePath = Path.Combine(reportPath, reportName + (useXlsx ? ".xlsx" : ".xls"));
+                XlFileFormat fileFormat = useXlsx ? XlFileFormat.xlOpenXMLWorkbook : XlFileFormat.xlExcel8;
+                if (useXlsx)
+                    Logging.Info($"Cable list '{reportName}' has {numberOfSheetsRequired} sheets; saving as .xlsx because .xls is limited to 255 sheets.");
 
-                ReportWB.SaveAs(reportFilePath, XlFileFormat.xlExcel8);
+                workingCopy = Path.Combine(reportPath, reportName + "_hal.tmp.xls");
+                if (File.Exists(workingCopy))
+                    File.Delete(workingCopy);
+                File.Copy(templatePath, workingCopy, true);
 
-                // Copy the required number of sheets
-                for (int l = 1; l <= numberOfSheetsRequired; l++)
-                {
-                    Worksheet cableListSheet = null;
-
-                    foreach (Worksheet sheet in TempWB.Sheets)
-                    {
-                        if (sheet.Name == "CABLE LIST")
-                        {
-                            cableListSheet = sheet;
-                            break;
-                        }
-                    }
-
-                    if (cableListSheet == null)
-                    {
-                        Logging.Error("Sheet 'CABLE LIST' does not exist in the template workbook.");
-                        break;
-                    }
-
-                    // Copy the "CABLE LIST" sheet to the report workbook
-                    cableListSheet.Copy(After: ReportWB.Sheets[ReportWB.Sheets.Count]);
-
-                    // Rename the newly copied sheet
-                    Worksheet newSheet = ReportWB.Sheets[ReportWB.Sheets.Count];
-                    newSheet.Name = "CL-" + l;
-                }
-
-                // Close the template workbook
-                TempWB.Close(true);
-                Marshal.ReleaseComObject(TempWB);
-
-                // Disable display alerts
-                ExcelApp.DisplayAlerts = false;
-
-                // Call DeleteDefaultSheets function, assumed to be defined elsewhere
-                DeleteDefaultSheets();
+                ReportWB = ExcelApp.Workbooks.Open(workingCopy);
+                workXlsx = PrepareCableListWorkbookFromTemplate(numberOfSheetsRequired, useXlsx, reportFilePath);
+                long copyMs = sw.ElapsedMilliseconds;
+                Logging.Info($"Cable list '{reportName}': copied {numberOfSheetsRequired} sheets in {copyMs} ms");
 
                 int Q = 1;
+                int maxQ = iarr.GetLength(0) - 1;
+                LoomInitialRow = 8;
+                LoomInitialCol = 2;
+                double dateColWidth = 0;
+                Worksheet headerTemplateSheet = null;
 
-                // Populate each sheet with data from iarr
                 for (int R = 1; R <= numberOfSheetsRequired; R++)
                 {
                     Worksheet ws1 = (Worksheet)ReportWB.Sheets[R];
-                    ws1.Activate();
 
-                    if (R != 1)
+                    int rowsThisSheet = 0;
+                    if (Q <= maxQ && loomSheetRowReq > 0)
+                        rowsThisSheet = Math.Min(loomSheetRowReq, maxQ - Q + 1);
+
+                    if (rowsThisSheet > 0)
                     {
-                        //changes in first sheet will reflect in rest of the sheet, value are hard coded, to improve performace
-                        ws1.Range["C48"].Formula = "='CL-1'!C48";
-                        ws1.Range["C49"].Formula = "='CL-1'!C49";
-                        ws1.Range["C50"].Formula = "='CL-1'!C50";
-                        ws1.Range["C51"].Formula = "='CL-1'!C51";
-                        ws1.Range["C52"].Formula = "='CL-1'!C52";
-                        
-                        ws1.Range["D48"].NumberFormat = "General";
-                        ws1.Range["D48"].Formula = "='CL-1'!D48";
-                        ws1.Range["D49"].Formula = "='CL-1'!D49";
-                        ws1.Range["D50"].Formula = "='CL-1'!D50";
-                        ws1.Range["D51"].Formula = "='CL-1'!D51";
-                        ws1.Range["D52"].Formula = "='CL-1'!D52";
-                        ws1.Range["F51"].Value = ws1.Parent.Worksheets["CL-1"].Range["F51"].Text;
+                        object[,] block = CableListDataBlock.Build(iarr, Q, rowsThisSheet);
 
-                        ws1.Range["C48:C52"].NumberFormat = "@";
-                        ws1.Range["D48:D52"].NumberFormat = "dd-mm-yyyy";
-                        ws1.Columns["D"].AutoFit();
+                        int startExcelRow = LoomInitialRow + 1;
+                        WriteBlock(ws1, startExcelRow, LoomInitialCol + 1, block);
 
-                        
-                        ws1.Range["F49"].Formula = "='CL-1'!F49";
-                        ws1.Range["F51"].Formula = "='CL-1'!F51";
-                        ws1.Range["F52"].Formula = "='CL-1'!F52";
-                        ws1.Range["K51"].Formula = "='CL-1'!K51";
-                        ws1.Range["K52"].Formula = "='CL-1'!K52";
+                        var strikeRows = new List<int>();
+                        var mergedMe = new HashSet<string>();
+                        var meOps = new List<HalMeMerge>();
+                        for (int r = 0; r < rowsThisSheet; r++)
+                        {
+                            int q = Q + r;
+                            int excelRow = startExcelRow + r;
+
+                            if (string.Equals(iarr[q, 19]?.ToString(), "D", StringComparison.Ordinal))
+                                strikeRows.Add(excelRow);
+
+                            if (!string.IsNullOrEmpty(iarr[q, 12] as string))
+                            {
+                                string mergeKind = iarr[q, 11]?.ToString();
+                                if (mergeKind == "ME")
+                                {
+                                    string meKey = Convert.ToString(iarr[q, 12]) + ":" + Convert.ToString(iarr[q, 13]) + ":"
+                                        + Convert.ToString(iarr[q, 16]) + ":" + Convert.ToString(iarr[q, 18]);
+                                    if (!mergedMe.Add(meKey))
+                                        continue;
+                                    meOps.Add(CableListMerges.BuildMe(iarr[q, 12], iarr[q, 13], iarr[q, 14], iarr[q, 16], iarr[q, 18]));
+                                }
+                                else if (mergeKind == "UN")
+                                {
+                                    SubLoomUNmergeCellsWithaValue(iarr[q, 12], iarr[q, 12], iarr[q, 14], iarr[q, 15], iarr[q, 18], ws1);
+                                }
+                                else if (mergeKind == "LAST")
+                                {
+                                    ws1.Range["B" + excelRow].Value2 = iarr[q, 14];
+                                }
+                            }
+                        }
+
+                        CableListMerges.ApplyMeBatch(ws1, meOps);
+                        ApplyStrikethroughRows(ws1, strikeRows);
+                        Q += rowsThisSheet;
                     }
 
-                    LoomInitialRow = 8;
-                    LoomInitialCol = 2;
-                    for (int O = 1; O <= loomSheetRowReq; O++)
-                    {
-                        for (int P = 1; P <= 10; P++)  // Adjust max 19 or other values as necessary
-                        {
-                            ws1.Cells[LoomInitialRow + O, LoomInitialCol + P].Value = iarr[Q, P];
-                        }
-
-                        ws1.Cells[LoomInitialRow + O, LoomInitialCol + 10].Value = iarr[Q, 19];
-
-                        if (iarr[Q, 19].ToString() == "D")
-                        {
-
-                            //  Range headerRange = ReportWS.Range["A1", "I1"];
-                           Range strikeThroughRange = ws1.Range["B"+(LoomInitialRow + O).ToString(), "L"+(LoomInitialRow + O).ToString()];
-                            if (strikeThroughRange != null)
-                            {
-                                strikeThroughRange.MergeCells = false;  // Ensure cells are not merged
-                                strikeThroughRange.Font.Strikethrough = true; // Apply strikethrough
-                                ws1.Application.ScreenUpdating = true; // Force UI refresh
-                                ws1.Calculate(); // Ensure updates are reflected
-                            }                         
-                        }
-
-                        if (!string.IsNullOrEmpty((string)iarr[Q, 12]))
-                        {
-                            if (iarr[Q, 11].ToString() == "ME")
-                            {
-                                SubLoomMergeCellsWithaValue(iarr[Q, 12], iarr[Q, 13], iarr[Q, 14], iarr[Q, 15], iarr[Q, 16], iarr[Q, 18]);
-                            }
-                            else if (iarr[Q, 11].ToString() == "UN")
-                            {
-                                SubLoomUNmergeCellsWithaValue(iarr[Q, 12], iarr[Q, 12], iarr[Q, 14], iarr[Q, 15], iarr[Q, 18]);
-                            }
-                            else if (iarr[Q, 11].ToString() == "LAST")
-                            {
-                                ws1.Cells[LoomInitialRow + O, LoomInitialCol].Value = iarr[Q, 14];
-                            }
-                        }
-
-                        if (Q < iarr.GetLength(0) - 1)
-                        {
-                            Q++;
-                        }
-                        else
-                        {
-                            break;
-                        }
-                    }
-
-                    ws1.Range["L51:L52"].FormulaR1C1 = $"SHEET {R} OF {ReportWB.Sheets.Count} SHEETS";
-                    ws1.Range["B3:D4"].FormulaR1C1 = "";
-                    //adding loomName and issue 
+                    object[,] sheetLabel = new object[2, 1];
+                    sheetLabel[0, 0] = $"SHEET {R} OF {numberOfSheetsRequired} SHEETS";
+                    sheetLabel[1, 0] = sheetLabel[0, 0];
+                    ws1.Range["L51:L52"].Value2 = sheetLabel;
                     if (R == 1)
                     {
                         if (reportName.Length > 1)
@@ -1775,12 +1940,40 @@ namespace Electre_Customize_DotNet.MainOperation
                             ws1.Range["F51:F52"].Value = reportName;
                             ws1.Range["K52"].Value = "";
                         }
-                    }                  
-                    ws1.Range["B47"].Value = DateTime.Now.Year;
-                    alignCellsXl(8, 46);                  
+                    }
+                    else if (R == 2)
+                    {
+                        ApplyCl1HeaderFormulas(ws1);
+                        ((Range)ws1.Columns["D"]).AutoFit();
+                        dateColWidth = Convert.ToDouble(((Range)ws1.Columns["D"]).ColumnWidth);
+                        headerTemplateSheet = ws1;
+                    }
                 }
-               
-                ReportWB.Save();
+
+                if (numberOfSheetsRequired > 2 && headerTemplateSheet != null)
+                {
+                    CopyRangeToSheetGroup(headerTemplateSheet, "C48:K52", 3, numberOfSheetsRequired);
+                    if (dateColWidth > 0)
+                    {
+                        SelectSheetGroup(3, numberOfSheetsRequired);
+                        ((Range)((Worksheet)ExcelApp.ActiveSheet).Columns["D"]).ColumnWidth = dateColWidth;
+                        UngroupSheets();
+                    }
+                }
+
+                SelectSheetGroup(1, numberOfSheetsRequired);
+                alignCellsXl(8, 46, (Worksheet)ExcelApp.ActiveSheet);
+                UngroupSheets();
+                ClearCutCopyMode();
+
+                long fillMs = sw.ElapsedMilliseconds - copyMs;
+                long saveStart = sw.ElapsedMilliseconds;
+                if (useXlsx)
+                    ReportWB.Save();
+                else
+                    ReportWB.SaveAs(reportFilePath, fileFormat);
+                long saveMs = sw.ElapsedMilliseconds - saveStart;
+                Logging.Info($"Cable list '{reportName}': copy={copyMs}ms fill={fillMs}ms save={saveMs}ms total={sw.ElapsedMilliseconds}ms sheets={numberOfSheetsRequired} -> {reportFilePath}");
             }
             catch (COMException ex)
             {
@@ -1794,18 +1987,33 @@ namespace Electre_Customize_DotNet.MainOperation
             }
             finally
             {
-                // Clean up resources              
+                if (TempWB != null)
+                {
+                    try { TempWB.Close(false); } catch { }
+                    Marshal.ReleaseComObject(TempWB);
+                    TempWB = null;
+                }
                 if (ReportWB != null)
                 {
-                    ReportWB.Close(true);
+                    ReportWB.Close(false);
                     Marshal.ReleaseComObject(ReportWB);
+                    ReportWB = null;
+                }
+                if (workingCopy != null && File.Exists(workingCopy))
+                {
+                    try { File.Delete(workingCopy); } catch { }
+                }
+                if (!useXlsx && workXlsx != null && File.Exists(workXlsx))
+                {
+                    try { File.Delete(workXlsx); } catch { }
                 }
             }
         }
         
-        public void alignCellsXl(int fromCell, int toCell)
+        public void alignCellsXl(int fromCell, int toCell, Worksheet ws = null)
         {
-            Range rangeB = ReportWB.ActiveSheet.Range["B" + fromCell, "O" + toCell];
+            ws ??= (Worksheet)ReportWB.ActiveSheet;
+            Range rangeB = ws.Range["B" + fromCell, "O" + toCell];
             rangeB.HorizontalAlignment = XlHAlign.xlHAlignCenter;
             rangeB.VerticalAlignment = XlVAlign.xlVAlignCenter;
         }
@@ -1824,11 +2032,45 @@ namespace Electre_Customize_DotNet.MainOperation
         }
 
         // this method generates Continuity List report format with HAL template
+        private string PrepareContinuityWorkbookFromTemplate(int numberOfSheetsRequired, bool useXlsx, string reportFilePath)
+        {
+            ExcelApp.DisplayAlerts = false;
+            Worksheet keep = FindSheetByName(ReportWB, "continuity", ignoreCase: true);
+            if (keep == null)
+                throw new InvalidOperationException("Sheet 'continuity' does not exist in the template workbook.");
+
+            ExcelSheetOps.KeepOnlyNamedSheet(ReportWB, keep);
+
+            Worksheet first = (Worksheet)ReportWB.Sheets[1];
+            if (first.Name != "CWOB-1")
+                first.Name = "CWOB-1";
+
+            alignCellsXl(6, 53, first);
+
+            string xlsxWork = useXlsx
+                ? reportFilePath
+                : Path.Combine(Path.GetDirectoryName(reportFilePath) ?? "", Path.GetFileNameWithoutExtension(reportFilePath) + "_cwob.work.xlsx");
+            if (!useXlsx && File.Exists(xlsxWork))
+                File.Delete(xlsxWork);
+            ReportWB.SaveAs(xlsxWork, XlFileFormat.xlOpenXMLWorkbook);
+
+            DuplicateTemplateSheets(numberOfSheetsRequired, "CWOB-");
+            return xlsxWork;
+        }
+
+        private void ApplyCwob1HeaderFormulas(Worksheet ws)
+        {
+            ContinuityHeaderFormulas.ApplyCwob1Formulas(ws);
+        }
+
+        private void WriteContinuityDataBlock(Worksheet ws, int startRow, object[,] arrFTcwob, int qStart, int rows)
+        {
+            ContinuityDataBlock.Write(ws, startRow, arrFTcwob, qStart, rows);
+        }
+
         public void GenerateHALReportFormat_ContinuityList(object[,] arrFTcwob, string reportType, string reportName)
         {
             int numRowInReportSheet = 47;
-            int StartRow;
-            int StartCol;
             int numberOfSheetsRequired = 0;
 
             int arrFTcwobCount = 0;
@@ -1851,107 +2093,83 @@ namespace Electre_Customize_DotNet.MainOperation
                 return;
             }
 
+            var sw = Stopwatch.StartNew();
+            string workingCopy = null;
+            string workXlsx = null;
+            bool useXlsx = false;
+
             try
             {
-                ReportWB = ExcelApp.Workbooks.Add();
+                SuspendExcelUpdates();
                 ExcelApp.DisplayAlerts = false;
 
-                TempWB = ExcelApp.Workbooks.Open(templatePath);
+                if (numberOfSheetsRequired < 1)
+                    numberOfSheetsRequired = 1;
 
                 string reportPath = Path.Combine(GlobalVar.ReportFolderGlobal, reportType);
-
                 if (!Directory.Exists(reportPath))
-                {
                     Directory.CreateDirectory(reportPath);
-                }
 
-                string reportFilePath = Path.Combine(reportPath, reportName + ".xls");
+                useXlsx = numberOfSheetsRequired > 250;
+                string reportFilePath = Path.Combine(reportPath, reportName + (useXlsx ? ".xlsx" : ".xls"));
+                XlFileFormat fileFormat = useXlsx ? XlFileFormat.xlOpenXMLWorkbook : XlFileFormat.xlExcel8;
+                if (useXlsx)
+                    Logging.Info($"Continuity '{reportName}' has {numberOfSheetsRequired} sheets; saving as .xlsx because .xls is limited to 255 sheets.");
 
-                ReportWB.SaveAs(reportFilePath, XlFileFormat.xlExcel8);
+                workingCopy = Path.Combine(reportPath, reportName + "_cwob.tmp.xls");
+                if (File.Exists(workingCopy))
+                    File.Delete(workingCopy);
+                File.Copy(templatePath, workingCopy, true);
 
-                // Copy the required number of sheets
-                for (int l = 1; l <= numberOfSheetsRequired; l++)
-                {
-                    Worksheet cableListSheet = null;
-
-                    foreach (Worksheet sheet in TempWB.Sheets)
-                    {
-                        if (sheet.Name.ToLower() == "continuity")
-                        {
-                            cableListSheet = sheet;
-                            break;
-                        }
-                    }
-
-                    if (cableListSheet == null)
-                    {
-                        Logging.Error("Sheet 'CABLE LIST' does not exist in the template workbook.");
-                        break;
-                    }
-
-                    // Copy the "CABLE LIST" sheet to the report workbook
-                    cableListSheet.Copy(After: ReportWB.Sheets[ReportWB.Sheets.Count]);
-
-                    // Rename the newly copied sheet
-                    Worksheet newSheet = ReportWB.Sheets[ReportWB.Sheets.Count];
-                    newSheet.Name = "CWOB-" + l;
-                }
-
-                // Close the template workbook
-                TempWB.Close(true);
-                Marshal.ReleaseComObject(TempWB);
-
-                // Disable display alerts
-                ExcelApp.DisplayAlerts = false;
-
-                // Call DeleteDefaultSheets function, assumed to be defined elsewhere
-                DeleteDefaultSheets();
+                ReportWB = ExcelApp.Workbooks.Open(workingCopy);
+                workXlsx = PrepareContinuityWorkbookFromTemplate(numberOfSheetsRequired, useXlsx, reportFilePath);
+                long copyMs = sw.ElapsedMilliseconds;
+                Logging.Info($"Continuity '{reportName}': copied {numberOfSheetsRequired} sheets in {copyMs} ms");
 
                 int Q = 0;
+                int maxQ = arrFTcwob.GetLength(0) - 1;
+                int StartRow = 6;
+                int rowsPerSheet = numRowInReportSheet + 1; // rows 6..53 inclusive
+                Worksheet headerTemplateSheet = null;
+
                 for (int R = 1; R <= numberOfSheetsRequired; R++)
                 {
                     Worksheet ws1 = (Worksheet)ReportWB.Sheets[R];
-                    ws1.Activate();
-                    ws1.Cells[4, 12].Value = $"{R} OF {numberOfSheetsRequired}";
+                    ws1.Range["L4"].Value2 = $"{R} OF {numberOfSheetsRequired}";
 
-                    if (R != 1)
+                    int rowsThisSheet = 0;
+                    if (Q <= maxQ)
+                        rowsThisSheet = Math.Min(rowsPerSheet, maxQ - Q + 1);
+
+                    if (rowsThisSheet > 0)
                     {
-                        //changes in first sheet will reflect in rest of the sheet, value are hard coded, to improve performace
-                        ws1.Range["C56"].Formula = "='CWOB-1'!C56";
-                        ws1.Range["C57"].Formula = "='CWOB-1'!C57";
-                        ws1.Range["F56"].Formula = "='CWOB-1'!F56";
-                        ws1.Range["I56"].Formula = "='CWOB-1'!I56";
-                        ws1.Range["L56"].Formula = "='CWOB-1'!L56";
-                        ws1.Range["F4"].Formula = "='CWOB-1'!F4";
-                        ws1.Range["I4"].Formula = "='CWOB-1'!I4";
+                        WriteContinuityDataBlock(ws1, StartRow, arrFTcwob, Q, rowsThisSheet);
+                        Q += rowsThisSheet;
                     }
 
-                    StartRow = 6;
-                    StartCol = 3;
-                    for (int O = StartRow; O <= StartRow + numRowInReportSheet; O++)
-                    {                       
-                        ws1.Cells[O, StartCol].Value = arrFTcwob[Q, 0];
-                        ws1.Cells[O, StartCol + 2].Value = arrFTcwob[Q, 1];
-                        ws1.Cells[O, StartCol + 3].Value = arrFTcwob[Q, 2];
-                        ws1.Cells[O, StartCol + 5].Value = arrFTcwob[Q, 3];
-                        ws1.Cells[O, StartCol + 6].Value = arrFTcwob[Q, 4];
-                        ws1.Cells[O, StartCol + 8].Value = arrFTcwob[Q, 5];
-                        ws1.Cells[O, StartCol + 11].Value = arrFTcwob[Q, 6];
-                        
-                        if (Q < arrFTcwob.GetLength(0) - 1)
-                        {
-                            Q++;
-                        }
-                        else
-                        {
-                            ReportWB.Save();
-                            break;
-                        }
-
-                        alignCellsXl(6, 53);
-
+                    if (R == 2)
+                    {
+                        ApplyCwob1HeaderFormulas(ws1);
+                        headerTemplateSheet = ws1;
                     }
                 }
+
+                if (numberOfSheetsRequired > 2 && headerTemplateSheet != null)
+                {
+                    CopyRangeToSheetGroup(headerTemplateSheet, "F4:I4", 3, numberOfSheetsRequired);
+                    CopyRangeToSheetGroup(headerTemplateSheet, "C56:L57", 3, numberOfSheetsRequired);
+                }
+
+                ClearCutCopyMode();
+
+                long fillMs = sw.ElapsedMilliseconds - copyMs;
+                long saveStart = sw.ElapsedMilliseconds;
+                if (useXlsx)
+                    ReportWB.Save();
+                else
+                    ReportWB.SaveAs(reportFilePath, fileFormat);
+                long saveMs = sw.ElapsedMilliseconds - saveStart;
+                Logging.Info($"Continuity '{reportName}': copy={copyMs}ms fill={fillMs}ms save={saveMs}ms total={sw.ElapsedMilliseconds}ms sheets={numberOfSheetsRequired} -> {reportFilePath}");
             }
             catch (COMException ex)
             {
@@ -1965,20 +2183,38 @@ namespace Electre_Customize_DotNet.MainOperation
             }
             finally
             {
-                // Clean up resources              
-
+                if (TempWB != null)
+                {
+                    try { TempWB.Close(false); } catch { }
+                    Marshal.ReleaseComObject(TempWB);
+                    TempWB = null;
+                }
                 if (ReportWB != null)
                 {
-                    ReportWB.Close(true);
+                    ReportWB.Close(false);
                     Marshal.ReleaseComObject(ReportWB);
+                    ReportWB = null;
+                }
+                if (workingCopy != null && File.Exists(workingCopy))
+                {
+                    try { File.Delete(workingCopy); } catch { }
+                }
+                if (!useXlsx && workXlsx != null && File.Exists(workXlsx))
+                {
+                    try { File.Delete(workXlsx); } catch { }
                 }
             }
         }
         // after generating Excel reports this method releseComObjactes
         public void releaseExcel()
         {
+            if (ExcelApp == null)
+                return;
+
+            ResumeExcelUpdates();
             ExcelApp.Quit();
             Marshal.ReleaseComObject(ExcelApp);
+            ExcelApp = null;
         }
 
       // this method create header for sheet,project wirelist,component specifice breakdown reports 
@@ -1988,9 +2224,11 @@ namespace Electre_Customize_DotNet.MainOperation
 
             try
             {
-                ReportWB = ExcelApp.Workbooks.Open(workbookPath);
+                SuspendExcelUpdates();
+                if (!IsWorkbookOpen(workbookPath))
+                    ReportWB = ExcelApp.Workbooks.Open(workbookPath);
 
-                ReportWS = ReportWB.ActiveSheet;
+                ReportWS = ReportWB.ActiveSheet as Worksheet;
 
                 if (ReportWS == null)
                 {
@@ -1998,38 +2236,34 @@ namespace Electre_Customize_DotNet.MainOperation
                     return false;
                 }
 
-                // Set header cells
-                ReportWS.Cells[ReportAppendRow, 1].Value = "FROM CONN";
-                ReportWS.Cells[ReportAppendRow, 2].Value = "FROM PIN";
-                ReportWS.Cells[ReportAppendRow, 3].Value = "TO CONN";
-                ReportWS.Cells[ReportAppendRow, 4].Value = "TO PIN";
-                ReportWS.Cells[ReportAppendRow, 5].Value = "WIRE CODE";
-                ReportWS.Cells[ReportAppendRow, 6].Value = "WIRE TYPE";
-                ReportWS.Cells[ReportAppendRow, 7].Value = "LENGTH";
-                ReportWS.Cells[ReportAppendRow, 8].Value = "RD";
-                ReportWS.Cells[ReportAppendRow, 9].Value = "LD";
-               ReportWS.Cells[ReportAppendRow, 10].Value = " NERD";
-               
-                //  ReportWS.Cells[ReportAppendRow, "Shunt"].Value = "Shunt"; 
-                // Uncomment if Shunt is required
+                object[,] header = new object[1, 10];
+                header[0, 0] = "FROM CONN";
+                header[0, 1] = "FROM PIN";
+                header[0, 2] = "TO CONN";
+                header[0, 3] = "TO PIN";
+                header[0, 4] = "WIRE CODE";
+                header[0, 5] = "WIRE TYPE";
+                header[0, 6] = "LENGTH";
+                header[0, 7] = "RD";
+                header[0, 8] = "LD";
+                header[0, 9] = " NERD";
+                WriteBlock(ReportWS, ReportAppendRow, 1, header);
 
-                // Format the header row
                 Range headerRange = ReportWS.Range["A1", "J1"];
                 headerRange.Font.Bold = true;
+                ReleaseCom(headerRange);
 
+                ((Range)ReportWS.Columns["A"]).ColumnWidth = 14.78;
+                ((Range)ReportWS.Columns["B"]).ColumnWidth = 14.78;
+                ((Range)ReportWS.Columns["C"]).ColumnWidth = 14;
+                ((Range)ReportWS.Columns["D"]).ColumnWidth = 16.67;
+                ((Range)ReportWS.Columns["E"]).ColumnWidth = 21.33;
+                ((Range)ReportWS.Columns["F"]).ColumnWidth = 14.11;
+                ((Range)ReportWS.Columns["G"]).ColumnWidth = 10;
+                ((Range)ReportWS.Columns["H"]).ColumnWidth = 20;
+                ((Range)ReportWS.Columns["I"]).ColumnWidth = 15;
+                ((Range)ReportWS.Columns["J"]).ColumnWidth = 10;
 
-                // Set column widths
-                ReportWS.Columns["A"].ColumnWidth = 14.78;
-                ReportWS.Columns["B"].ColumnWidth = 14.78;
-                ReportWS.Columns["C"].ColumnWidth = 14;
-                ReportWS.Columns["D"].ColumnWidth = 16.67;
-                ReportWS.Columns["E"].ColumnWidth = 21.33;
-                ReportWS.Columns["F"].ColumnWidth = 14.11;
-                ReportWS.Columns["G"].ColumnWidth = 10;
-                ReportWS.Columns["H"].ColumnWidth = 20;
-                ReportWS.Columns["I"].ColumnWidth = 15;
-                ReportWS.Columns["J"].ColumnWidth = 10;
-                
                 ReportAppendRow++;
 
                 Logging.Info($"CreateBreakdownReportHeader created for {workbookPath}");
@@ -2057,8 +2291,13 @@ namespace Electre_Customize_DotNet.MainOperation
         public string AppendToExcelPowerOn(List<ElectreObject> elecCollection)
         {
             List<string> parameterPINs = new List<string>();
+            var sw = Stopwatch.StartNew();
             try
             {
+                SuspendExcelUpdates();
+                _powerOnBlocks = new List<PowerOnExcelBlock>();
+
+                PowerOnReport.AllIndex = ElectreTraceIndex.Build(modMain.ElecCollection_All);
                 var sourceComponents = GetSCB_TCB_Source(elecCollection);
                 if (sourceComponents.Count == 0)
                 {
@@ -2077,32 +2316,38 @@ namespace Electre_Customize_DotNet.MainOperation
                     // Tracing the Destination component from Source
                     TraceAndLogPath(source, source.WireNumber, source.ConnectorName, source.PinNumber, source.SubNet, visitedConnections, negPins, ref parameterPINs);
                 }
+
+                FlushPowerOnBuffer();
+
                 if (parameterPINs.Count >= 2)
                 {
                     // Join the values as strings with a hyphen
                     string result = string.Join("-", parameterPINs.Select(pin => pin.ToString()));
 
                     // Set the cell format to Text to prevent Excel from interpreting it as a date
-                    ReportWS.Cells[ReportAppendRow, 5].NumberFormat = "@";  // Set to Text format
-
-                    // Assign the result to the cell
-                    ReportWS.Cells[ReportAppendRow, 5].Value = result;
-
-                    // Set the font to bold
-                    ReportWS.Cells[ReportAppendRow, 5].Font.Bold = true;
+                    Range paramCell = ReportWS.Range["E" + ReportAppendRow];
+                    paramCell.NumberFormat = "@";  // Set to Text format
+                    paramCell.Value2 = result;
+                    paramCell.Font.Bold = true;
+                    ReleaseCom(paramCell);
 
                     ReportAppendRow += 2;
                     parameterPINs.Clear();
                 }
-                ReportWS.Columns[1].AutoFit();
-                ReportWS.Columns[5].AutoFit();
+                ((Range)ReportWS.Columns[1]).AutoFit();
+                ((Range)ReportWS.Columns[5]).AutoFit();
                 ReportWB.Save();
+                Logging.Info($"Power On '{ReportWS.Name}': total={sw.ElapsedMilliseconds}ms -> {ReportWB.FullName}");
                 return ReportWS.Name;
             }
             catch (Exception ex)
             {
                 Logging.Error("AppendToExcelPowerOn: Error while appending PowerOn data: " + ex.Message);
                 return "null";
+            }
+            finally
+            {
+                _powerOnBlocks = null;
             }
         }
 
@@ -2113,9 +2358,19 @@ namespace Electre_Customize_DotNet.MainOperation
             {
                 visited.Add($"{connectorName},{pinNumber}");
 
-                var connectedObjects = modMain.ElecCollection_All
-                    .Where(w => w.WireNumber == wireNumber && w.SubNet == subNet && !visited.Contains($"{w.ConnectorName},{w.PinNumber}"))
-                    .ToList();
+                var wirePeers = PowerOnReport.AllIndex != null
+                    ? PowerOnReport.AllIndex.ConnectedOnWire(wireNumber, subNet)
+                    : modMain.ElecCollection_All;
+                var connectedObjects = new List<ElectreObject>();
+                for (int i = 0; i < wirePeers.Count; i++)
+                {
+                    var w = wirePeers[i];
+                    if (w.WireNumber == wireNumber && w.SubNet == subNet
+                        && !visited.Contains($"{w.ConnectorName},{w.PinNumber}"))
+                    {
+                        connectedObjects.Add(w);
+                    }
+                }
 
                 if (connectedObjects.Count == 0)
                 {
@@ -2208,19 +2463,26 @@ namespace Electre_Customize_DotNet.MainOperation
         {
             try
             {
-                ReportWS.Cells[ReportAppendRow, 1].Value = source.Panel;
-                ReportWS.Cells[ReportAppendRow, 2].Value = source.ConnectorName;
-                ReportWS.Cells[ReportAppendRow, 3].Value = destConnector;
-                ReportWS.Cells[ReportAppendRow, 4].Value = $"{destPin}(+)";
-                ReportWS.Cells[ReportAppendRow, 5].Value = source.Voltage;
+                int startRow = ReportAppendRow;
+                var rows = new List<object[]>(4);
+
+                object[] first = new object[5];
+                first[0] = source.Panel;
+                first[1] = source.ConnectorName;
+                first[2] = destConnector;
+                first[3] = $"{destPin}(+)";
+                first[4] = source.Voltage;
+                rows.Add(first);
 
                 int i = 1;
 
                 if (negPins.Count == 0)
                 {
-                    ReportWS.Cells[ReportAppendRow + i, 2].Value = "";
-                    ReportWS.Cells[ReportAppendRow + i, 3].Value = "wrt STR";
-                    ReportWS.Cells[ReportAppendRow + i, 4].Value = "-";
+                    object[] groundRow = new object[5];
+                    groundRow[1] = "";
+                    groundRow[2] = "wrt STR";
+                    groundRow[3] = "-";
+                    rows.Add(groundRow);
                     i++;
                 }
                 else
@@ -2231,35 +2493,39 @@ namespace Electre_Customize_DotNet.MainOperation
                         {
                             string groundConnector = negPin.Split(',')[0];
                             string groundPin = negPin.Split(',')[1];
-                            ReportWS.Cells[ReportAppendRow + i, 2].Value = "";
-                            ReportWS.Cells[ReportAppendRow + i, 3].Value = groundConnector;
-                            ReportWS.Cells[ReportAppendRow + i, 4].Value = $"{groundPin}(-)";
+                            object[] groundRow = new object[5];
+                            groundRow[1] = "";
+                            groundRow[2] = groundConnector;
+                            groundRow[3] = $"{groundPin}(-)";
+                            rows.Add(groundRow);
                             i++;
                         }
                     }
                 }
 
                 int totalRows = i;
-
-                ReportWS.Range[ReportWS.Cells[ReportAppendRow, 5], ReportWS.Cells[ReportAppendRow + totalRows - 1, 5]].Merge();
-                ReportWS.Range[ReportWS.Cells[ReportAppendRow, 2], ReportWS.Cells[ReportAppendRow + totalRows - 1, 2]].Merge();
-
-                if (source.ComponentType.ToUpper() == "SCB")
+                object[,] block = new object[totalRows, 5];
+                for (int r = 0; r < totalRows; r++)
                 {
-                    ReportWS.Range[ReportWS.Cells[ReportAppendRow, 1], ReportWS.Cells[ReportAppendRow + totalRows - 1, 1]].Merge();
-                }
-                else if (source.ComponentType.ToUpper() == "TCB")
-                {
-                    // ReportWS.Range[ReportWS.Cells[ReportAppendRow, 1], ReportWS.Cells[ReportAppendRow + 3, 1]].Merge();
-                    ReportWS.Range[ReportWS.Cells[ReportAppendRow, 1], ReportWS.Cells[ReportAppendRow + totalRows + 1, 1]].Merge();
+                    object[] row = rows[r];
+                    for (int c = 0; c < 5; c++)
+                        block[r, c] = row[c];
                 }
 
-                ReportWS.Rows[ReportAppendRow].AutoFit();
-                ReportWS.Rows[ReportAppendRow + totalRows - 1].AutoFit();
-                // ReportAppendRow += 3;
+                bool isScb = string.Equals(source.ComponentType, "SCB", StringComparison.OrdinalIgnoreCase);
+                bool isTcb = string.Equals(source.ComponentType, "TCB", StringComparison.OrdinalIgnoreCase);
+                _powerOnBlocks.Add(new PowerOnExcelBlock
+                {
+                    StartRow = startRow,
+                    TotalRows = totalRows,
+                    Rows = block,
+                    MergePanelScb = isScb,
+                    MergePanelTcb = isTcb
+                });
+
                 ReportAppendRow += totalRows + 1;
 
-                if (source.ComponentType.ToUpper() == "TCB")
+                if (isTcb)
                 {
                     // adds if component type is TCB only
                     parameterPINs.Add(destPin);
@@ -2268,6 +2534,45 @@ namespace Electre_Customize_DotNet.MainOperation
             catch (Exception ex)
             {
                 Logging.Error($"LogToExcel Error: Connector={destConnector}, Pin={destPin} - {ex.Message}");
+            }
+        }
+
+        private void FlushPowerOnBuffer()
+        {
+            if (ReportWS == null || _powerOnBlocks == null || _powerOnBlocks.Count == 0)
+                return;
+
+            // Same order as the original per-call writes: values, then merges, then AutoFit.
+            // TCB panel merge overlaps the next block's first row, so blocks cannot be merged after one sheet-wide dump.
+            for (int b = 0; b < _powerOnBlocks.Count; b++)
+            {
+                PowerOnExcelBlock block = _powerOnBlocks[b];
+                WriteBlock(ReportWS, block.StartRow, 1, block.Rows);
+
+                int lastDataRow = block.StartRow + block.TotalRows - 1;
+                Range mergeE = ReportWS.Range[ToA1(block.StartRow, 5) + ":" + ToA1(lastDataRow, 5)];
+                mergeE.Merge();
+                ReleaseCom(mergeE);
+
+                Range mergeB = ReportWS.Range[ToA1(block.StartRow, 2) + ":" + ToA1(lastDataRow, 2)];
+                mergeB.Merge();
+                ReleaseCom(mergeB);
+
+                if (block.MergePanelScb)
+                {
+                    Range mergeA = ReportWS.Range[ToA1(block.StartRow, 1) + ":" + ToA1(lastDataRow, 1)];
+                    mergeA.Merge();
+                    ReleaseCom(mergeA);
+                }
+                else if (block.MergePanelTcb)
+                {
+                    Range mergeA = ReportWS.Range[ToA1(block.StartRow, 1) + ":" + ToA1(block.StartRow + block.TotalRows + 1, 1)];
+                    mergeA.Merge();
+                    ReleaseCom(mergeA);
+                }
+
+                ((Range)ReportWS.Rows[block.StartRow]).AutoFit();
+                ((Range)ReportWS.Rows[lastDataRow]).AutoFit();
             }
         }
 
@@ -2460,11 +2765,11 @@ namespace Electre_Customize_DotNet.MainOperation
 
 
                     // Merge the rows in column 1
-                    if (source.ComponentType.ToUpper() == "SCB")
+                    if (string.Equals(source.ComponentType, "SCB", StringComparison.OrdinalIgnoreCase))
                     {
                         ReportWS.Range[ReportWS.Cells[ReportAppendRow, 1], ReportWS.Cells[ReportAppendRow + 1, 1]].Merge();
                     }
-                    else if(source.ComponentType.ToUpper() == "TCB")
+                    else if(string.Equals(source.ComponentType, "TCB", StringComparison.OrdinalIgnoreCase))
                     {
                         ReportWS.Range[ReportWS.Cells[ReportAppendRow, 1], ReportWS.Cells[ReportAppendRow + 3, 1]].Merge();
                     }
@@ -2481,7 +2786,7 @@ namespace Electre_Customize_DotNet.MainOperation
 
                     ReportAppendRow += 3;
 
-                    if (source.ComponentType.ToUpper() == "TCB")
+                    if (string.Equals(source.ComponentType, "TCB", StringComparison.OrdinalIgnoreCase))
                     {
                         // adds if component type is TCB only
                         parameterPINs.Add(currentPinNumber);
@@ -2727,11 +3032,11 @@ namespace Electre_Customize_DotNet.MainOperation
 
 
                      // Merge the rows in column 1
-                     if (source.ComponentType.ToUpper() == "SCB")
+                     if (string.Equals(source.ComponentType, "SCB", StringComparison.OrdinalIgnoreCase))
                      {
                          ReportWS.Range[ReportWS.Cells[ReportAppendRow, 1], ReportWS.Cells[ReportAppendRow + 1, 1]].Merge();
                      }
-                     else if (source.ComponentType.ToUpper() == "TCB")
+                     else if (string.Equals(source.ComponentType, "TCB", StringComparison.OrdinalIgnoreCase))
                      {
                          ReportWS.Range[ReportWS.Cells[ReportAppendRow, 1], ReportWS.Cells[ReportAppendRow + 3, 1]].Merge();
                      }
@@ -2748,7 +3053,7 @@ namespace Electre_Customize_DotNet.MainOperation
 
                      ReportAppendRow += 3;
 
-                     if (source.ComponentType.ToUpper() == "TCB")
+                     if (string.Equals(source.ComponentType, "TCB", StringComparison.OrdinalIgnoreCase))
                      {
                          // adds if component type is TCB only
                          parameterPINs.Add(currentPinNumber);
@@ -2848,18 +3153,18 @@ namespace Electre_Customize_DotNet.MainOperation
                     ReportWS.Range[ReportWS.Cells[ReportAppendRow, 5], ReportWS.Cells[ReportAppendRow + 1, 5]].Merge();
                     ReportWS.Range[ReportWS.Cells[ReportAppendRow, 2], ReportWS.Cells[ReportAppendRow + 1, 2]].Merge();
 
-                    if (source.ComponentType.ToUpper() == "SCB")
+                    if (string.Equals(source.ComponentType, "SCB", StringComparison.OrdinalIgnoreCase))
                     {
                         ReportWS.Range[ReportWS.Cells[ReportAppendRow, 1], ReportWS.Cells[ReportAppendRow + 1, 1]].Merge();
                     }
-                    else if (source.ComponentType.ToUpper() == "TCB")
+                    else if (string.Equals(source.ComponentType, "TCB", StringComparison.OrdinalIgnoreCase))
                     {
                         ReportWS.Range[ReportWS.Cells[ReportAppendRow, 1], ReportWS.Cells[ReportAppendRow + 3, 1]].Merge();
                     }
 
                     ReportAppendRow += 3;
 
-                    if (source.ComponentType.ToUpper() == "TCB")
+                    if (string.Equals(source.ComponentType, "TCB", StringComparison.OrdinalIgnoreCase))
                     {
                         // adds if component type is TCB only
                         parameterPINs.Add(currentPinNumber);
@@ -2987,7 +3292,9 @@ namespace Electre_Customize_DotNet.MainOperation
 
             try
             {
-                ReportWB = ExcelApp.Workbooks.Open(workbookPath);
+                SuspendExcelUpdates();
+                if (!IsWorkbookOpen(workbookPath))
+                    ReportWB = ExcelApp.Workbooks.Open(workbookPath);
 
                 ReportWS = ReportWB.ActiveSheet as Worksheet;
 
@@ -2997,36 +3304,32 @@ namespace Electre_Customize_DotNet.MainOperation
                     return false;
                 }
 
-                // Set header cells
-                ReportWS.Cells[ReportAppendRow, 1].Value = "Distribution Box";
-                ReportWS.Cells[ReportAppendRow, 2].Value = "CB to be pressed";
-                ReportWS.Cells[ReportAppendRow, 3].Value = "Unit";
-                ReportWS.Cells[ReportAppendRow, 4].Value = "Pins";
-                ReportWS.Cells[ReportAppendRow, 5].Value = "Parameter";
-                ReportWS.Cells[ReportAppendRow, 6].Value = "Remarks (MeasuredVoltage)";
+                object[,] header = new object[1, 6];
+                header[0, 0] = "Distribution Box";
+                header[0, 1] = "CB to be pressed";
+                header[0, 2] = "Unit";
+                header[0, 3] = "Pins";
+                header[0, 4] = "Parameter";
+                header[0, 5] = "Remarks (MeasuredVoltage)";
+                WriteBlock(ReportWS, ReportAppendRow, 1, header);
 
-                //  ReportWS.Cells[ReportAppendRow, "Shunt"].Value = "Shunt"; 
-                // Uncomment if Shunt is required
-
-                // Format the header row
                 Range headerRange = ReportWS.Range["A1", "F1"];
                 headerRange.Font.Bold = true;
-
-                // Center the text in the header row
                 headerRange.HorizontalAlignment = XlHAlign.xlHAlignCenter;
 
-                // Set column widths
-                ReportWS.Columns["A"].ColumnWidth = 20;
-                ReportWS.Columns["B"].ColumnWidth = 20;
-                ReportWS.Columns["C"].ColumnWidth = 15;
-                ReportWS.Columns["D"].ColumnWidth = 15;
-                ReportWS.Columns["E"].ColumnWidth = 20;
-                ReportWS.Columns["F"].ColumnWidth = 30;
+                ((Range)ReportWS.Columns["A"]).ColumnWidth = 20;
+                ((Range)ReportWS.Columns["B"]).ColumnWidth = 20;
+                ((Range)ReportWS.Columns["C"]).ColumnWidth = 15;
+                ((Range)ReportWS.Columns["D"]).ColumnWidth = 15;
+                ((Range)ReportWS.Columns["E"]).ColumnWidth = 20;
+                ((Range)ReportWS.Columns["F"]).ColumnWidth = 30;
 
-                // Center the text in all columns for data rows as well
-                Range dataRange = ReportWS.Range["A2", "F" + ReportWS.Rows.Count];
-                dataRange.HorizontalAlignment = XlHAlign.xlHAlignCenter;
-                dataRange.VerticalAlignment = XlHAlign.xlHAlignCenter;
+                // Same centering as A2:F{Rows.Count}, without formatting every unused row.
+                Range dataCols = ReportWS.Range["A:F"];
+                dataCols.HorizontalAlignment = XlHAlign.xlHAlignCenter;
+                dataCols.VerticalAlignment = XlHAlign.xlHAlignCenter;
+                ReleaseCom(dataCols);
+                ReleaseCom(headerRange);
 
                 ReportAppendRow++;
 
@@ -3042,6 +3345,22 @@ namespace Electre_Customize_DotNet.MainOperation
             {
                 MessageBox.Show("Excel ##06: " + ex.Message);
                 Logging.Error("Failed to create WireLess report Header: " + ex.Message);
+                return false;
+            }
+        }
+
+        private bool IsWorkbookOpen(string workbookPath)
+        {
+            if (ReportWB == null || string.IsNullOrEmpty(workbookPath))
+                return false;
+            try
+            {
+                string openPath = Path.GetFullPath(ReportWB.FullName);
+                string want = Path.GetFullPath(workbookPath);
+                return string.Equals(openPath, want, StringComparison.OrdinalIgnoreCase);
+            }
+            catch
+            {
                 return false;
             }
         }
@@ -3074,7 +3393,8 @@ namespace Electre_Customize_DotNet.MainOperation
             foreach (Excel.Worksheet sheet in wb.Sheets)
             {
                 // Only delete if not your copied sheets (optional condition)
-                if (sheet.Name != "MS" && !sheet.Name.StartsWith("ML-"))
+                if (!string.Equals(sheet.Name, "MS", StringComparison.OrdinalIgnoreCase)
+                    && !sheet.Name.StartsWith("ML-", StringComparison.OrdinalIgnoreCase))
                 {
                     sheet.Delete();
                 }
@@ -3085,11 +3405,12 @@ namespace Electre_Customize_DotNet.MainOperation
         {
             var projectPath = Path.GetDirectoryName(GlobalVar.ReportFolderGlobal.TrimEnd('\\')) + "\\";
             string projectName = new DirectoryInfo(projectPath.TrimEnd('\\')).Name;
+            Excel.Workbook ootbWBms = null;
             try
             {
+                SuspendExcelUpdates();
                 string ootbWBms_xls = projectPath + "result\\" + projectName + "_mat.xls";
                 string ootbWBms_xlsx = projectPath + "result\\" + projectName + "_mat.xlsx";
-                Excel.Workbook ootbWBms = null;
 
                 // Check for file existence and open the appropriate one
                 if (!File.Exists(ootbWBms_xls))
@@ -3116,7 +3437,6 @@ namespace Electre_Customize_DotNet.MainOperation
                     Console.WriteLine("Sheet name (modMain.ChkListPanelText) is not set.");
                     return false;
                 }
-                // Excel.Worksheet OOTBmsSheet = ootbWBms.Sheets[modMain.ChkListPanelText] as Excel.Worksheet;
                 Excel.Worksheet OOTBmsSheet = ootbWBms.Sheets["F"] as Excel.Worksheet;
 
                 if (OOTBmsSheet == null)
@@ -3126,32 +3446,45 @@ namespace Electre_Customize_DotNet.MainOperation
                     return false;
                 }
 
+                const int maxOotbRows = 3000;
+                object[,] panelBlock = OOTBmsSheet.Range["A1:I" + maxOotbRows].Value2 as object[,];
                 int i = 1;
-                while (OOTBmsSheet.Cells[i, 1].Value != null)
+                if (panelBlock != null)
                 {
-                    for (int S = 1; S <= 9; S++)
+                    int blockRows = panelBlock.GetLength(0);
+                    while (i <= blockRows && panelBlock[i, 1] != null)
                     {
-                        // modMain.arrTableOfOOTBms_Panel[i, S] = OOTBmsSheet.Cells[i, S].Value;
-                        var cellValue = OOTBmsSheet.Cells[i, S].Value;
-                        modMain.arrTableOfOOTBms_Panel[i, S] = cellValue != null ? cellValue.ToString() : string.Empty;
+                        for (int S = 1; S <= 9; S++)
+                        {
+                            var cellValue = panelBlock[i, S];
+                            modMain.arrTableOfOOTBms_Panel[i, S] = cellValue != null ? cellValue.ToString() : string.Empty;
+                        }
+                        i++;
                     }
-                    i++;
                 }
                 modMain.OOTBmsTotalrow_Selection = i;
 
                 // Read weight from "WEIGHT RESULT" sheet
                 OOTBmsSheet = ootbWBms.Sheets["WEIGHT RESULT"] as Excel.Worksheet;
-                for (int yy = 1; yy <= 200; yy++)
+                object[,] weightBlock = OOTBmsSheet.Range["A1:B200"].Value2 as object[,];
+                if (weightBlock != null)
                 {
-                    var panelName = OOTBmsSheet.Cells[yy, 1].Value;
-                    if (panelName != null && panelName.ToString() == modMain.ChkListPanelText)
+                    int weightRows = weightBlock.GetLength(0);
+                    for (int yy = 1; yy <= weightRows; yy++)
                     {
-                        OOTBPaneltotalWeight = OOTBmsSheet.Cells[yy, 2].Value;
-                        break;
+                        var panelName = weightBlock[yy, 1];
+                        if (panelName != null && panelName.ToString() == modMain.ChkListPanelText)
+                        {
+                            var weightVal = weightBlock[yy, 2];
+                            OOTBPaneltotalWeight = weightVal != null ? Convert.ToString(weightVal) : OOTBPaneltotalWeight;
+                            break;
+                        }
                     }
                 }
 
                 ootbWBms.Close(false);
+                ReleaseCom(ootbWBms);
+                ootbWBms = null;
                 return true;
             }
             catch (Exception ex)
@@ -3159,184 +3492,192 @@ namespace Electre_Customize_DotNet.MainOperation
                 Console.WriteLine("An error occurred: " + ex.Message);
                 return false;
             }
+            finally
+            {
+                if (ootbWBms != null)
+                {
+                    try { ootbWBms.Close(false); } catch { }
+                    ReleaseCom(ootbWBms);
+                }
+            }
+        }
+
+        private void PrepareMaterialListWorkbookFromTemplate(int numberOfSheetsRequired, bool useXlsx, string reportFilePath)
+        {
+            ExcelApp.DisplayAlerts = false;
+            Worksheet keep = FindSheetByName(ReportWB, "MS") ?? FindSheetByName(ReportWB, "ML-1");
+            if (keep == null)
+                throw new InvalidOperationException("Template sheet 'MS' not found.");
+
+            string keepName = keep.Name;
+            for (int i = ReportWB.Sheets.Count; i >= 1; i--)
+            {
+                Worksheet ws = (Worksheet)ReportWB.Sheets[i];
+                if (!string.Equals(ws.Name, keepName, StringComparison.OrdinalIgnoreCase))
+                    ws.Delete();
+            }
+
+            Worksheet first = (Worksheet)ReportWB.Sheets[1];
+            if (first.Name != "ML-1")
+                first.Name = "ML-1";
+
+            first.Range["B8"].Value2 = PanelDrawingWindow.panelDigit;
+            first.Range["H9"].Value2 = OOTBPaneltotalWeight;
+
+            if (useXlsx)
+                ReportWB.SaveAs(reportFilePath, XlFileFormat.xlOpenXMLWorkbook);
+
+            DuplicateTemplateSheets(numberOfSheetsRequired, "ML-");
+        }
+
+        private void SaveMaterialListWorkbook(bool useXlsx, string reportFilePath)
+        {
+            if (useXlsx)
+                ReportWB.Save();
+            else
+                ReportWB.SaveAs(reportFilePath, XlFileFormat.xlExcel8);
+        }
+
+        private void WriteMaterialListDataBlock(Worksheet ws, int startRow, int qStart, int rows)
+        {
+            object[,] colB = new object[rows, 1];
+            object[,] colD = new object[rows, 1];
+            object[,] colE = new object[rows, 1];
+            object[,] colG = new object[rows, 1];
+            object[,] colH = new object[rows, 1];
+            object[,] colK = new object[rows, 1];
+
+            for (int r = 0; r < rows; r++)
+            {
+                int q = qStart + r;
+                colB[r, 0] = q;
+                colD[r, 0] = modMain.arrTableOfOOTBms_Panel[q + 1, 4];
+                colE[r, 0] = modMain.arrTableOfOOTBms_Panel[q + 1, 5];
+                colG[r, 0] = modMain.arrTableOfOOTBms_Panel[q + 1, 7];
+                colH[r, 0] = modMain.arrTableOfOOTBms_Panel[q + 1, 9];
+
+                string ak1 = modMain.arrTableOfOOTBms_Panel[q + 1, 2];
+                if (ak1.StartsWith("LOC-", StringComparison.OrdinalIgnoreCase))
+                    colK[r, 0] = ak1.Substring(4);
+                else
+                    colK[r, 0] = ak1;
+            }
+
+            // Same cells as the original per-cell writes: B, D, E, G, H, K (StartCol=2).
+            WriteBlock(ws, startRow, 2, colB);
+            WriteBlock(ws, startRow, 4, colD);
+            WriteBlock(ws, startRow, 5, colE);
+            WriteBlock(ws, startRow, 7, colG);
+            WriteBlock(ws, startRow, 8, colH);
+            WriteBlock(ws, startRow, 11, colK);
         }
 
         public void GenerateHALReportFormat_MaterialList(string[] iarr, string iReportName)
         {
-            Excel.Application excelApp = null;
-            Excel.Workbook TemplateWB = null;
-            Excel.Workbook ReportWB = null;
+            string workingCopy = null;
+            var sw = Stopwatch.StartNew();
             try
             {
+                if (ExcelApp == null)
+                    InitiateExcel();
+                SuspendExcelUpdates();
+
                 if (!ReadOOTBMaterialListXL()) return; // Check if the OOTB material list is created
 
                 int NumRowInReportSheet = 16; // Number of rows per sheet in the report
                 int StartRow = 13; // Start Row for data
-                int StartCol = 2; // Start Column for data
                 int NumberOfSheetsRequired = (int)Math.Floor((double)modMain.OOTBmsTotalrow_Selection / NumRowInReportSheet + 1); // Calculate the number of sheets needed
-                bool bReportTemplate = false;
 
-                bReportTemplate = File.Exists(Environment.GetEnvironmentVariable("ELECTRE_CUSTOMIZE") + "\\system\\MATERIALLIST_ReportFormat.xls");
-                if (!bReportTemplate)
+                string templatePath = Environment.GetEnvironmentVariable("ELECTRE_CUSTOMIZE") + "\\system\\MATERIALLIST_ReportFormat.xls";
+                if (!File.Exists(templatePath))
                 {
                     Console.WriteLine("The MaterialList Report Template is missing. So saving file into TEMPFILES folder without template");
                     return;
                 }
+
                 string panelDrawingPath = ConfigurationManager.AppSettings["PanelDrawingFolder"];
                 string templFolder = Path.Combine(GlobalVar.ReportFolderGlobal, panelDrawingPath);
 
-                /*Excel.Application excelApp = new Excel.Application();
-                Excel.Workbook TemplateWB = excelApp.Workbooks.Open(Environment.GetEnvironmentVariable("ELECTRE_CUSTOMIZE") + "\\system\\MATERIALLIST_ReportFormat.xls");
-                Excel.Workbook ReportWB = excelApp.Workbooks.Add();
-               // ReportWB.SaveAs(frmMain.lblReportFolder.Caption + iReportName, Excel.XlFileFormat.xlExcel8);
-                ReportWB.SaveAs(templFolder + iReportName, Excel.XlFileFormat.xlExcel8);
+                if (NumberOfSheetsRequired < 1)
+                    NumberOfSheetsRequired = 1;
 
-
-                for (int l = 1; l <= NumberOfSheetsRequired; l++)
+                bool useXlsx = NumberOfSheetsRequired > 250;
+                string reportFilePath = Path.Combine(templFolder, iReportName);
+                if (useXlsx)
                 {
-                   *//* excelApp.ActiveWindow.ActivateNext();
-                    Excel.Sheets sheets = ReportWB.Sheets;
-                    Excel.Worksheet sheetMS = (Excel.Worksheet)sheets["MS"];
-                    sheetMS.Copy(After: ReportWB.Sheets[ReportWB.Sheets.Count]);
-                    ReportWB.Sheets[ReportWB.Sheets.Count].Name = "ML-" + l;*//*
-
-                    Excel.Worksheet sheetMS = (Excel.Worksheet)TemplateWB.Sheets["MS"];
-                    sheetMS.Copy(After: ReportWB.Sheets[ReportWB.Sheets.Count]);
-                    ReportWB.Sheets[ReportWB.Sheets.Count].Name = "ML-" + l;
+                    reportFilePath = Path.Combine(templFolder, iReportName + ".xlsx");
+                    Logging.Info($"Material list '{iReportName}' has {NumberOfSheetsRequired} sheets; saving as .xlsx because .xls is limited to 255 sheets.");
                 }
 
-                TemplateWB.Close();
+                workingCopy = Path.Combine(templFolder, iReportName + "_ml.tmp.xls");
+                if (File.Exists(workingCopy))
+                    File.Delete(workingCopy);
+                File.Copy(templatePath, workingCopy, true);
 
-                excelApp.DisplayAlerts = false;
-                DeleteDefaultSheets();*/
-
-                excelApp = new Excel.Application();
-                excelApp.DisplayAlerts = false; // Set early to suppress popups
-
-                string templatePath = Environment.GetEnvironmentVariable("ELECTRE_CUSTOMIZE") + "\\system\\MATERIALLIST_ReportFormat.xls";
-
-                if (!File.Exists(templatePath))
-                {
-                    Console.WriteLine("Template file not found.");
-                    return;
-                }
-
-                TemplateWB = excelApp.Workbooks.Open(templatePath);
-                ReportWB = excelApp.Workbooks.Add();
-
-                // Copy "MS" sheet from template to report
-                for (int l = 1; l <= NumberOfSheetsRequired; l++)
-                {
-                    Excel.Worksheet templateSheet = null;
-                    try
-                    {
-                        templateSheet = (Excel.Worksheet)TemplateWB.Sheets["MS"];
-                    }
-                    catch
-                    {
-                        Console.WriteLine("Template sheet 'MS' not found.");
-                        TemplateWB.Close(false);
-                        ReportWB.Close(false);
-                        excelApp.Quit();
-                        return;
-                    }
-
-                    templateSheet.Copy(After: ReportWB.Sheets[ReportWB.Sheets.Count]);
-                    ReportWB.Sheets[ReportWB.Sheets.Count].Name = "ML-" + l;
-                }
-
-                DeleteDefaultSheets(ReportWB); // Clean up default sheets
-
-                // Save the workbook initially
-                ReportWB.SaveAs(Path.Combine(templFolder, iReportName), Excel.XlFileFormat.xlExcel8);
-
-                TemplateWB.Close(false);
-     /*           ReportWB.Save(); // Save final result
-
-                // Clean up Excel instance
-                ReportWB.Close(true);
-                excelApp.Quit();*/
+                ReportWB = ExcelApp.Workbooks.Open(workingCopy);
+                PrepareMaterialListWorkbookFromTemplate(NumberOfSheetsRequired, useXlsx, reportFilePath);
+                long copyMs = sw.ElapsedMilliseconds;
+                Logging.Info($"Material list '{iReportName}': copied {NumberOfSheetsRequired} sheets in {copyMs} ms");
 
                 int Q = 1;
-
-                // Initialize array for material details (like part number, weight, etc.)
-                string[,] arrDetails = new string[500, 10];
-                int L1, L2;
+                int lastQ = modMain.OOTBmsTotalrow_Selection - 2;
+                if (lastQ < 1)
+                    lastQ = 1;
 
                 for (int S = 1; S <= NumberOfSheetsRequired; S++)
                 {
-                    Excel.Worksheet WS1 = (Excel.Worksheet)ReportWB.Sheets[S];
-                    WS1.Activate();
-                    WS1.Cells[9, 2] = $"SHEET {S} OF {NumberOfSheetsRequired} SHEETS";
-                    // WS1.Cells[8, 2] = frmMain.txtPanelDigit.Text;
-                    WS1.Cells[8, 2] = PanelDrawingWindow.panelDigit;
-                    WS1.Cells[9, 8] = OOTBPaneltotalWeight;
+                    Worksheet WS1 = (Worksheet)ReportWB.Sheets[S];
+                    WS1.Range["B9"].Value2 = $"SHEET {S} OF {NumberOfSheetsRequired} SHEETS";
 
-                    for (int R = StartRow; R < StartRow + NumRowInReportSheet; R++)
+                    int rowsThisSheet = Math.Min(NumRowInReportSheet, lastQ - Q + 1);
+                    if (rowsThisSheet > 0)
                     {
-                        WS1.Cells[R, StartCol] = Q; // serial number
-                        WS1.Cells[R, StartCol + 2] = modMain.arrTableOfOOTBms_Panel[Q + 1, 4]; // Quantity
-                        WS1.Cells[R, StartCol + 3] = modMain.arrTableOfOOTBms_Panel[Q + 1, 5]; // Part Number
-                        WS1.Cells[R, StartCol + 5] = modMain.arrTableOfOOTBms_Panel[Q + 1, 7]; // Description
-                        WS1.Cells[R, StartCol + 6] = modMain.arrTableOfOOTBms_Panel[Q + 1, 9]; // Weight
+                        WriteMaterialListDataBlock(WS1, StartRow, Q, rowsThisSheet);
+                        Q += rowsThisSheet;
+                    }
 
-                        string ak1 = modMain.arrTableOfOOTBms_Panel[Q + 1, 2];
-                        if (ak1.StartsWith("LOC-"))
-                        {
-                            WS1.Cells[R, StartCol + 9] = ak1.Substring(4); // Remove LOC-
-                        }
-                        else
-                        {
-                            WS1.Cells[R, StartCol + 9] = ak1; // Ref Connector
-                        }
-
-                        if (Q < modMain.OOTBmsTotalrow_Selection - 2)
-                        {
-                            Q++;
-                        }
-                        else
-                        {
-                            ReportWB.Save();
-                            return; // Exit after saving
-                        }
+                    if (Q > lastQ)
+                    {
+                        SaveMaterialListWorkbook(useXlsx, reportFilePath);
+                        Logging.Info($"Material list '{iReportName}': copy={copyMs}ms fill={sw.ElapsedMilliseconds - copyMs}ms total={sw.ElapsedMilliseconds}ms sheets={NumberOfSheetsRequired}");
+                        return;
                     }
                 }
 
-                ReportWB.Save();
+                SaveMaterialListWorkbook(useXlsx, reportFilePath);
+                Logging.Info($"Material list '{iReportName}': copy={copyMs}ms fill={sw.ElapsedMilliseconds - copyMs}ms total={sw.ElapsedMilliseconds}ms sheets={NumberOfSheetsRequired}");
             }
             catch (Exception ex)
             {
                 Console.WriteLine("An error occurred: " + ex.Message);
+                Logging.Error("GenerateHALReportFormat_MaterialList: " + ex.Message);
             }
             finally
             {
                 try
                 {
+                    if (TempWB != null)
+                    {
+                        try { TempWB.Close(false); } catch { }
+                        Marshal.ReleaseComObject(TempWB);
+                        TempWB = null;
+                    }
                     if (ReportWB != null)
                     {
                         ReportWB.Close(true);
                         Marshal.ReleaseComObject(ReportWB);
+                        ReportWB = null;
                     }
-
-                    if (TemplateWB != null)
+                    if (workingCopy != null && workingCopy.EndsWith("_ml.tmp.xls", StringComparison.OrdinalIgnoreCase)
+                        && File.Exists(workingCopy))
                     {
-                        TemplateWB.Close(false);
-                        Marshal.ReleaseComObject(TemplateWB);
-                    }
-
-                    if (excelApp != null)
-                    {
-                        excelApp.Quit();
-                        Marshal.ReleaseComObject(excelApp);
+                        try { File.Delete(workingCopy); } catch { }
                     }
                 }
                 catch (Exception cleanupEx)
                 {
                     Console.WriteLine("Error during Excel cleanup: " + cleanupEx.Message);
                 }
-
-                GC.Collect();
-                GC.WaitForPendingFinalizers();
             }
         }
 
@@ -3581,19 +3922,31 @@ namespace Electre_Customize_DotNet.MainOperation
         {
             using (StreamWriter writer = new StreamWriter(filePath, append: true))
             {
-                List<ElectreObject> panelDetails = modMain.ElecCollection_All
-                .Where(e => e.Panel == ChkListPanelText)
-                .ToList();
+                var allIndex = ElectreTraceIndex.Build(modMain.ElecCollection_All);
+                var all = modMain.ElecCollection_All;
+                var panelDetails = new List<ElectreObject>();
+                for (int i = 0; i < all.Count; i++)
+                {
+                    var e = all[i];
+                    if (string.Equals(e.Panel, ChkListPanelText, StringComparison.OrdinalIgnoreCase))
+                        panelDetails.Add(e);
+                }
                 int missingDestCount = 0;
                 foreach (var obj in panelDetails)
                 {   
                     var sourceCon = obj.ConnectorName;
                     var sourcePin = obj.PinNumber;
-                    var destinationObj = modMain.ElecCollection_All.Where(e => e.WireNumber == obj.WireNumber
-                                                             //&& e.Core_Part_Number == obj.Core_Part_Number
-                                                              && e.SubNet == obj.SubNet
-                                                              && e.ConnectorName != obj.ConnectorName)
-                                                              .FirstOrDefault();
+                    ElectreObject destinationObj = null;
+                    var mates = allIndex.ConnectedOnWire(obj.WireNumber, obj.SubNet);
+                    for (int m = 0; m < mates.Count; m++)
+                    {
+                        var e = mates[m];
+                        if (e.ConnectorName != obj.ConnectorName)
+                        {
+                            destinationObj = e;
+                            break;
+                        }
+                    }
                     var destCon = string.Empty;
                     var destPin = string.Empty;
 

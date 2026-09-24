@@ -136,7 +136,7 @@ namespace Electre_Customize_DotNet
 
         //    set
         //    {
-        //        if (value.ToLower() == "wait")
+        //        if (string.Equals(value, "wait", StringComparison.OrdinalIgnoreCase))
         //        {
         //            loadingbtn.Text = value;
         //            loadingbtn.BackColor = Color.Yellow;
@@ -228,7 +228,7 @@ namespace Electre_Customize_DotNet
             Cursor = Cursors.WaitCursor;
             reportLocLinklbl.Hide();
 
-            if (loadingbtn.Text.ToLower() == "close")
+            if (string.Equals(loadingbtn.Text, "close", StringComparison.OrdinalIgnoreCase))
             {
                 Cursor = Cursors.Default;
             }

@@ -84,11 +84,11 @@ namespace Electre_Customize_DotNet.ReportUI
 
         private void txtVariantFilter_TextChanged(object sender, EventArgs e)
         {
-            if (txtVariantFilter.Text.ToUpper() == "SEARCH FILTER") return;
+            if (string.Equals(txtVariantFilter.Text, "SEARCH FILTER", StringComparison.OrdinalIgnoreCase)) return;
 
-            string filter = txtVariantFilter.Text.ToLower();
+            string filter = txtVariantFilter.Text;
             var filteredItems = originalVariantList
-                .Where(item => item.ToLower().Contains(filter))
+                .Where(item => item != null && item.IndexOf(filter, StringComparison.OrdinalIgnoreCase) >= 0)
                 .ToList();
 
             string previouslyChecked = null;

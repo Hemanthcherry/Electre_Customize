@@ -21,6 +21,7 @@ namespace Electre_Customize_DotNet.Objects
         public string? WireName;
         public string? layer;
         public string Group;
+        public string[] WireParts;
     }
 
 

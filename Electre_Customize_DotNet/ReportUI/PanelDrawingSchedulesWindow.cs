@@ -1,4 +1,5 @@
 ﻿using Electre_Customize_DotNet.Contracts;
+using Electre_Customize_DotNet.Helpers.PowerOn;
 using Electre_Customize_DotNet.MainOperation;
 using Electre_Customize_DotNet.Objects;
 using System;
@@ -214,9 +215,7 @@ namespace Electre_Customize_DotNet.ReportUI
             }
 
             // Step 3: Filter ElecCollection based on selected sheets
-            filteredSheetCollection = modMain.ElecCollection
-                .Where(e => checkedSheetItems.Contains(e.SheetName))
-                .ToList(); // Store filtered data separately
+            filteredSheetCollection = ElectreCollectionFilter.BySheet(modMain.ElecCollection, checkedSheetItems);
 
             // Step 4: Update arrListOfSHEET with distinct, sorted SheetNames from the filtered data
             modMain.arrListOfSHEET = filteredSheetCollection

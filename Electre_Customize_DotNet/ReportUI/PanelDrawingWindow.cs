@@ -1,4 +1,5 @@
 ﻿using Electre_Customize_DotNet.Contracts;
+using Electre_Customize_DotNet.Helpers.PowerOn;
 using Electre_Customize_DotNet.MainOperation;
 using Electre_Customize_DotNet.Objects;
 using Microsoft.Office.Interop.Excel;
@@ -359,8 +360,7 @@ namespace Electre_Customize_DotNet.ReportUI
             panelDigit = Microsoft.VisualBasic.Interaction.InputBox("Enter the 15 digit number for panel", "Input");
             txtPanelDigit.Text = panelDigit;
 
-            // selectedPanelList = modMain.ElecCollection_All.Where(e => e.Panel == selectedPanel).ToList();
-            selectedPanelList = modMain.ElecCollection_All.Where(e => selectedPanels.Contains(e.Panel)).ToList();
+            selectedPanelList = ElectreCollectionFilter.ByPanel(modMain.ElecCollection_All, selectedPanels);
 
             List<string> panelLoomList = selectedPanelList.Select(e => e.BundleName).ToList();
             List<string> panelSheetList = selectedPanelList.Select(e => e.SheetName).ToList();

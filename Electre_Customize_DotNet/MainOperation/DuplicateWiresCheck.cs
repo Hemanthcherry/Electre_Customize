@@ -73,24 +73,22 @@ namespace Electre_Customize_DotNet.MainOperation
 
                 // Convert wireListCountList to a HashSet for faster lookup
                 //var wireSet = new HashSet<(string, string)>(
-                //    wireListCountList.Select(w => (w.WireNumber.ToLower(), w.Core_Part_Number.ToLower()))
+                //    wireListCountList.Select(w => (w.WireNumber, w.Core_Part_Number))
                 //);
-                var wireSet = new HashSet<(string, string)>(
-                    wireListCountList.Select(w => (w.WireNumber.ToLower(),
-                                                   w.Core_Part_Number?.ToLower() ?? string.Empty))
-                );
-
+                var wireSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var w in wireListCountList)
+                    wireSet.Add((w.WireNumber ?? "") + "\u001f" + (w.Core_Part_Number ?? ""));
 
                 foreach (ElectreObject elec in modMain.ElecCollection_All)
                 {
-                    var key = (elec.WireNumber.ToLower(), elec.Core_Part_Number?.ToLower() ?? string.Empty);
+                    string key = (elec.WireNumber ?? "") + "\u001f" + (elec.Core_Part_Number ?? "");
 
                     if (wireSet.Contains(key))
                     {
                         duplicateWires.Add(new DuplicateWire
                         {
                             WireName = elec.WireNumber,
-                            WireNumber = elec.Core_Part_Number?.ToLower() ?? string.Empty,
+                            WireNumber = elec.Core_Part_Number ?? string.Empty,
                             sheetName = elec.SheetName
                         });
                     }

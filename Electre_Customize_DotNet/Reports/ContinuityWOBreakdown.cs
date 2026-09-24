@@ -1,7 +1,11 @@
-﻿using Electre_Customize_DotNet.Logs;
+﻿using Electre_Customize_DotNet.Helpers.Continuity;
+using Electre_Customize_DotNet.Helpers.Global;
+using Electre_Customize_DotNet.Helpers.PowerOn;
+using Electre_Customize_DotNet.Logs;
 using Electre_Customize_DotNet.MainOperation;
 using Electre_Customize_DotNet.Objects;
 using System.Configuration;
+using System.Diagnostics;
 using System.Windows.Forms;
 
 namespace Electre_Customize_DotNet.Reports
@@ -18,16 +22,21 @@ namespace Electre_Customize_DotNet.Reports
         }
 
         public static List<ElectreObject> selectedLoomObject;
+        private ElectreTraceIndex _trace;
 
         public void ContinuityReportGeneration(string ContinuityFolder, string ContinuityCompFolder, List<ElectreObject> filteredElecCollection )
         {
+            var sw = Stopwatch.StartNew();
             ContinuityWOBreakDown(filteredElecCollection);
+            long traceMs = sw.ElapsedMilliseconds;
 
             string reportName = "Continuity_WO_Breakdown";
 
-            string[,] arrFTcwobDist = removeRedundants(modMain.arrFTcwob);           
+            string[,] arrFTcwobDist = removeRedundants(modMain.arrFTcwob);
+            long uniqueMs = sw.ElapsedMilliseconds;
 
             _modExcel.GenerateHALReportFormat_ContinuityList(arrFTcwobDist, ContinuityFolder, reportName);
+            Logging.Info($"ContinuityReportGeneration: trace={traceMs}ms unique={uniqueMs - traceMs}ms excelAndComponents={sw.ElapsedMilliseconds - uniqueMs}ms total={sw.ElapsedMilliseconds}ms");
 
             // Sheet Continuity Components starts 
             //string workbookPath = _modExcel.CreateNewWorkbook("Continuity_Components", "Continuity_Components", ConfigurationManager.AppSettings["ContinuityCompFolder"]);
@@ -60,20 +69,11 @@ namespace Electre_Customize_DotNet.Reports
             try
             {
                 // clear the previous data if exists
-                modMain.arrListOfContinuityComponents.Clear();
+                modMain.ClearSearchList(modMain.arrListOfContinuityComponents);
                 modMain.destinationConnectors.Clear();
-                // clearing the arrFTcwob object
-                if (modMain.arrFTcwob != null && modMain.arrFTcwob.Cast<string>().Any(value => !string.IsNullOrEmpty(value)))
+                if (modMain.arrFTcwob != null)
                 {
-                    // If arrFTcwob contains data, clear it
-                    for (int i = 0; i < modMain.arrFTcwob.GetLength(0); i++)
-                    {
-                        for (int j = 0; j < modMain.arrFTcwob.GetLength(1); j++)
-                        {
-                            modMain.arrFTcwob[i, j] = null; // Clear data
-                        }
-                    }
-                    Console.WriteLine("arrFTcwob data cleared.");
+                    Array.Clear(modMain.arrFTcwob, 0, modMain.arrFTcwob.Length);
                 }
                 try
                 {
@@ -83,7 +83,7 @@ namespace Electre_Customize_DotNet.Reports
                     // Sort the selectedLoomObject based on the specified criteria
                     selectedLoomObject = selectedLoomObject.OrderByDescending(obj => obj.ComponentType == "EQU") // "EQU" first
                                                             .ThenBy(obj =>
-                                                                modMain.connectorMap.Keys.Any(suffix =>
+                                                                EquConnectorMap.Pairs.Keys.Any(suffix =>
                                                                     obj.ConnectorName.EndsWith($"_{suffix}", StringComparison.OrdinalIgnoreCase)
                                                                 ) ? 1 : 0 // if it matches a known connector suffix → 1 (comes later), else → 0 (comes first)
                                                             )
@@ -97,6 +97,7 @@ namespace Electre_Customize_DotNet.Reports
 
                     // Filter out objects with No Megger is null, then add it into selectedLoomObject for continuity termination
                     selectedLoomObject = selectedLoomObject.Where(e => string.IsNullOrEmpty(e.NoMegger)).ToList();
+                    _trace = ElectreTraceIndex.Build(selectedLoomObject);
                 }
                 catch (Exception ex)
                 {
@@ -167,7 +168,7 @@ namespace Electre_Customize_DotNet.Reports
                     .Select(obj =>
                     {
                         // Find matching suffix
-                        var matchingSuffix = modMain.connectorMap.Keys
+                        var matchingSuffix = EquConnectorMap.Pairs.Keys
                             .FirstOrDefault(suffix => obj.ConnectorName.EndsWith($"_{suffix}", StringComparison.OrdinalIgnoreCase));
 
                         if (matchingSuffix != null)
@@ -185,21 +186,8 @@ namespace Electre_Customize_DotNet.Reports
                     .GroupBy(x => x.BaseName)
                     .ToList();
 
-                // Male connector suffixes: J1 to J24
-                var maleSuffixes = new List<string>
-                {
-                    "J1", "J2", "J3", "J4", "J5", "J6", "J7", "J8",
-                    "J9", "J10", "J11", "J12", "J13", "J14", "J15", "J16",
-                    "J17", "J18", "J19", "J20", "J21", "J22", "J23", "J24"
-                };
-
-                // Female connector suffixes: a to z, excluding i and o
-                var femaleSuffixes = new List<string>
-                {
-                    "a", "b", "c", "d", "e", "f", "g", "h",
-                    "j", "k", "l", "m", "n", "p", "q", "r",
-                    "s", "t", "u", "v", "w", "x", "y", "z"
-                };
+                var maleSuffixes = EquConnectorMap.MaleSuffixes;
+                var femaleSuffixes = EquConnectorMap.FemaleSuffixes;
 
                 // Process each group and find valid male/female pairs
                 foreach (var group in groupedEQUConnectors)
@@ -268,9 +256,19 @@ namespace Electre_Customize_DotNet.Reports
             {
                 visited.Add($"{connectorName},{pinNumber}");
 
-                var connectedObjects = selectedLoomObject
-                    .Where(w => w.WireNumber == wireNumber && w.SubNet == subNet && !visited.Contains($"{w.ConnectorName},{w.PinNumber}"))
-                    .ToList();
+                var wirePeers = _trace != null
+                    ? _trace.ConnectedOnWire(wireNumber, subNet)
+                    : selectedLoomObject;
+                var connectedObjects = new List<ElectreObject>();
+                for (int i = 0; i < wirePeers.Count; i++)
+                {
+                    var w = wirePeers[i];
+                    if (w.WireNumber == wireNumber && w.SubNet == subNet
+                        && !visited.Contains($"{w.ConnectorName},{w.PinNumber}"))
+                    {
+                        connectedObjects.Add(w);
+                    }
+                }
 
                 if (connectedObjects.Count == 0)
                 {
@@ -362,82 +360,29 @@ namespace Electre_Customize_DotNet.Reports
             }
         }
 
-        public static ElectreObject TracePinofEQUConnector(ElectreObject eleObj)
+        public ElectreObject TracePinofEQUConnector(ElectreObject eleObj)
         {
-            string lastConnectorName = eleObj.ConnectorName;
-            // Iterate through keys in the connectorMap
-            foreach (var key in modMain.connectorMap.Keys)
-            {
-                if (lastConnectorName.EndsWith(key, StringComparison.OrdinalIgnoreCase))
-                {
-                    string mappedValue = modMain.connectorMap[key];
-                    int suffixIndex = lastConnectorName.Length - key.Length;
-                    lastConnectorName = lastConnectorName.Substring(0, suffixIndex) + mappedValue;
-                    break;
-                }
-            }
-
-            var nextWireConnection = selectedLoomObject
-                                .FirstOrDefault(w => string.Equals(w.ConnectorName, lastConnectorName, StringComparison.OrdinalIgnoreCase) && w.PinNumber == eleObj.PinNumber);
-
-            return nextWireConnection;
+            return ConnectorTraceHops.TracePinofEQUConnector(eleObj, _trace, selectedLoomObject);
         }
 
-        public static ElectreObject TracePinofBreakConnector(ElectreObject eleObj)
+        public ElectreObject TracePinofBreakConnector(ElectreObject eleObj)
         {
-            string lastConnectorName = eleObj.ConnectorName;
-
-            if (lastConnectorName.EndsWith("_F", StringComparison.OrdinalIgnoreCase))
-            {
-                lastConnectorName = lastConnectorName.Substring(0, lastConnectorName.Length - 2) + "_M";
-            }
-            else if (lastConnectorName.EndsWith("_M", StringComparison.OrdinalIgnoreCase))
-            {
-                lastConnectorName = lastConnectorName.Substring(0, lastConnectorName.Length - 2) + "_F";
-            }
-
-            var nextWireConnection = selectedLoomObject
-                                .FirstOrDefault(w => string.Equals(w.ConnectorName, lastConnectorName, StringComparison.OrdinalIgnoreCase) && w.PinNumber == eleObj.PinNumber);
-
-            return nextWireConnection;
+            return ConnectorTraceHops.TracePinofBreakConnector(eleObj, _trace, selectedLoomObject);
         }
 
-        public static List<ElectreObject> TracePinOfJM(ElectreObject eleObj)
+        public List<ElectreObject> TracePinOfJM(ElectreObject eleObj)
         {
-            var CoonnectedObjs = selectedLoomObject
-                .Where(obj => obj.ConnectorName == eleObj.ConnectorName &&
-                              obj.ComponentType == "TBK" &&
-                              obj.SubNet != eleObj.SubNet &&
-                              obj.ShuntExt1 == eleObj.ShuntExt1 &&
-                              !string.IsNullOrEmpty(obj.ShuntExt1))
-                .ToList();
-
-            return CoonnectedObjs;
+            return ConnectorTraceHops.TracePinOfJM(eleObj, _trace, selectedLoomObject);
         }
 
-        public static List<ElectreObject> TracePinOfSPL(ElectreObject eleObj)
+        public List<ElectreObject> TracePinOfSPL(ElectreObject eleObj)
         {
-            var CoonnectedObjs = selectedLoomObject
-                .Where(obj => obj.ConnectorName == eleObj.ConnectorName &&
-                              obj.ComponentType == "SPL" &&
-                              obj.SubNet != eleObj.SubNet &&
-                              obj.ShuntExt1 == eleObj.ShuntExt1)
-                .ToList();
-
-            return CoonnectedObjs;
+            return ConnectorTraceHops.TracePinOfSPL(eleObj, _trace, selectedLoomObject);
         }
 
-        public static List<ElectreObject> TracePinOfTER(ElectreObject eleObj)
+        public List<ElectreObject> TracePinOfTER(ElectreObject eleObj)
         {
-            var CoonnectedObjs = selectedLoomObject
-                                    .Where(obj => obj.ConnectorName == eleObj.ConnectorName &&
-                                     obj.ComponentType == "TER" &&
-                                     obj.ShuntExt1 == eleObj.ShuntExt1 &&
-                                     obj.SubNet != eleObj.SubNet &&
-                                     !string.IsNullOrEmpty(obj.ShuntExt1))
-                                     .ToList();
-
-            return CoonnectedObjs;
+            return ConnectorTraceHops.TracePinOfTER(eleObj, _trace, selectedLoomObject);
         }
 
         void AppendContinuityDatato2dArray(ElectreObject source, string destConnector, string destPin, ref int rowNumber)
@@ -449,7 +394,7 @@ namespace Electre_Customize_DotNet.Reports
                     modMain.arrFTcwob[rowNumber, 0] = !string.IsNullOrEmpty(source.ConnectorName) ? source.ConnectorName : "NULL";
                     modMain.arrFTcwob[rowNumber, 1] = !string.IsNullOrEmpty(source.PinNumber) ? source.PinNumber : "NULL";
                     modMain.arrFTcwob[rowNumber, 5] = !string.IsNullOrEmpty(source.SheetName) ? source.SheetName : "NULL";
-                    modMain.arrFTcwob[rowNumber, 6] = modMain.layerAssign(source.Layer); // Assuming this method handles null internally
+                    modMain.arrFTcwob[rowNumber, 6] = LayerCodes.ToNerd(source.Layer);
                     modMain.arrFTcwob[rowNumber, 2] = !string.IsNullOrEmpty(destConnector) ? destConnector : "NULL";
                     modMain.arrFTcwob[rowNumber, 3] = !string.IsNullOrEmpty(destPin) ? destPin : "NULL";
 
@@ -461,7 +406,7 @@ namespace Electre_Customize_DotNet.Reports
                         core = source.Core_Part_Number;
                     }
                     // Check if the CableType is in the specified string sCableType_O
-                    if (modMain.sCableType_O.Contains("_" + source.CableType + "_"))
+                    if (CableTypes.IsNormalFamily(source.CableType))
                     {
                         if (source.Core_Part_Number == "" && source.CableType != "X")
                         {
@@ -473,12 +418,12 @@ namespace Electre_Customize_DotNet.Reports
                             modMain.arrFTcwob[rowNumber, 4] = source.WireNumber + "/" + source.Gauge.Substring(1) + "/" + core;
                         }
                     }
-                    else if (modMain.sCableType_1.Contains($"_{source.CableType}_"))
+                    else if (CableTypes.IsSpecial1(source.CableType))
                     {
                         modMain.arrFTcwob[rowNumber, 4] = $"{source.WireNumber}/{core}";
                         // modMain.arrFTcwob[rowNumber, 4] = $"{source.WireNumber}/{source.Core_Part_Number}";//{E1.Tag7} add in the between wirenumber and tag3 if required
                     }
-                    else if (modMain.sCableType_2.Contains($"_{source.CableType}_"))
+                    else if (CableTypes.IsSpecial2(source.CableType))
                     {
                         modMain.arrFTcwob[rowNumber, 4] = $"{source.WireNumber}/{core}";
                         // modMain.arrFTcwob[rowNumber, 4] = $"{source.WireNumber}/{source.Core_Part_Number}";//{E1.Tag7} add in the between wirenumber and tag3 if required
@@ -509,7 +454,7 @@ namespace Electre_Customize_DotNet.Reports
                 if (!string.IsNullOrEmpty(destConnector))
                 {
                     modMain.SearchAndAppend(destConnector, ref modMain.arrListOfContinuityComponents);
-                    modMain.SearchAndAppend($"{destConnector},{destPin}", ref modMain.destinationConnectors); // adding destination connector and pin to avoid reverse continuity
+                    modMain.SearchAndAppend($"{destConnector},{destPin}", modMain.destinationConnectors);
                 }
             }
             catch(Exception ex)
@@ -527,7 +472,7 @@ namespace Electre_Customize_DotNet.Reports
 
         private List<ElectreObject> loomElectreObject(List<ElectreObject> elecollection, List<string> selectedLoom)
         {
-            return elecollection.Where(e => selectedLoom.Contains(e.BundleName)).ToList();
+            return ElectreCollectionFilter.ByLoom(elecollection, selectedLoom);
         }
 
         //public bool IfExist(string istr, List<string> iarr)
@@ -587,103 +532,12 @@ namespace Electre_Customize_DotNet.Reports
         // removing duplicate connections and destinations for continuity
         public string[,] removeRedundants(string[,] arrFTcwob)
         {
-           // arrFTcwob = Sort2DArrayByFirstColumn(arrFTcwob);
-            int totalRows = arrFTcwob.GetLength(0);
-            string[,] arrFTcwobDist = new string[totalRows, 7];
-
-            HashSet<string> rededuntCheck = new HashSet<string>();
-            HashSet<string> duplicateDestTracker = new HashSet<string>();
-            Dictionary<string, int> destPinCounts = new Dictionary<string, int>();
-
-            int arrFTcwobDistCount = 0;
-
-            // Count destination pairs
-            for (int i = 0; i < totalRows; i++)
-            {
-                string destKey = $"{arrFTcwob[i, 2]}#{arrFTcwob[i, 3]}";
-                if (!destPinCounts.TryAdd(destKey, 1))
-                    destPinCounts[destKey]++;
-            }
-
-            for (int i = 0; i < totalRows; i++)
-            {
-                string src = $"{arrFTcwob[i, 0]}#{arrFTcwob[i, 1]}";
-                string dest = $"{arrFTcwob[i, 2]}#{arrFTcwob[i, 3]}";
-
-                string presentLine = $"{src}##{dest}";
-                string connectLine = $"{dest}##{src}";
-
-                if (destPinCounts[dest] > 1 && duplicateDestTracker.Contains(dest))
-                    continue;
-
-                if (!rededuntCheck.Contains(presentLine) && !rededuntCheck.Contains(connectLine) && presentLine != "####" && connectLine !="####")
-                {
-                    for (int col = 0; col < 7; col++)
-                        arrFTcwobDist[arrFTcwobDistCount, col] = arrFTcwob[i, col];
-
-                    arrFTcwobDistCount++;
-                    rededuntCheck.Add(presentLine);
-
-                    if (destPinCounts[dest] > 1)
-                        duplicateDestTracker.Add(dest);
-                }
-            }
-
-            // Trim the result to only filled rows
-            string[,] result = new string[arrFTcwobDistCount, 7];
-            for (int i = 0; i < arrFTcwobDistCount; i++)
-                for (int j = 0; j < 7; j++)
-                    result[i, j] = arrFTcwobDist[i, j];
-
-            return result; 
+            return ConnectionDeduper.Remove(arrFTcwob, copyCols: 7, skipEmptyHashPair: true, trimResult: true);
         }
 
-        // removing duplicate connections and destinations for Megger
         public string[,] removeRedundantsMegger(string[,] arrFTcwob)
         {
-           // arrFTcwob = Sort2DArrayByFirstColumn(arrFTcwob);
-            int totalRows = arrFTcwob.GetLength(0);
-            string[,] arrFTcwobDist = new string[totalRows, 4];
-
-            HashSet<string> rededuntCheck = new HashSet<string>();
-            HashSet<string> duplicateDestTracker = new HashSet<string>();
-            Dictionary<string, int> destPinCounts = new Dictionary<string, int>();
-
-            int arrFTcwobDistCount = 0;
-
-            // Count destination pairs
-            for (int i = 0; i < totalRows; i++)
-            {
-                string destKey = $"{arrFTcwob[i, 2]}#{arrFTcwob[i, 3]}";
-                if (!destPinCounts.TryAdd(destKey, 1))
-                    destPinCounts[destKey]++;
-            }
-
-            for (int i = 0; i < totalRows; i++)
-            {
-                string src = $"{arrFTcwob[i, 0]}#{arrFTcwob[i, 1]}";
-                string dest = $"{arrFTcwob[i, 2]}#{arrFTcwob[i, 3]}";
-
-                string presentLine = $"{src}##{dest}";
-                string connectLine = $"{dest}##{src}";
-
-                if (destPinCounts[dest] > 1 && duplicateDestTracker.Contains(dest))
-                    continue;
-
-                if (!rededuntCheck.Contains(presentLine) && !rededuntCheck.Contains(connectLine))
-                {
-                    for (int col = 0; col < 4; col++)
-                        arrFTcwobDist[arrFTcwobDistCount, col] = arrFTcwob[i, col];
-
-                    arrFTcwobDistCount++;
-                    rededuntCheck.Add(presentLine);
-
-                    if (destPinCounts[dest] > 1)
-                        duplicateDestTracker.Add(dest);
-                }
-            }
-
-            return arrFTcwobDist;
+            return ConnectionDeduper.Remove(arrFTcwob, copyCols: 4, skipEmptyHashPair: false, trimResult: false);
         }
 
         public string[,] Sort2DArrayByFirstColumn(string[,] input)
@@ -754,7 +608,7 @@ namespace Electre_Customize_DotNet.Reports
                     // Sort the selectedLoomObject based on the specified criteria
                     selectedLoomObject = selectedLoomObject.OrderByDescending(obj => obj.ComponentType == "EQU") // "EQU" first
                                                             .ThenBy(obj =>
-                                                                modMain.connectorMap.Keys.Any(suffix =>
+                                                                EquConnectorMap.Pairs.Keys.Any(suffix =>
                                                                     obj.ConnectorName.EndsWith($"_{suffix}", StringComparison.OrdinalIgnoreCase)
                                                                 ) ? 1 : 0 // if it matches a known connector suffix → 1 (comes later), else → 0 (comes first)
                                                             )
@@ -932,7 +786,7 @@ namespace Electre_Customize_DotNet.Reports
                                 {
                                     if (string.Equals(n1.WireNumber, E1.WireNumber, StringComparison.OrdinalIgnoreCase) &&
                                         string.Equals(n1.SubNet, E1.SubNet, StringComparison.OrdinalIgnoreCase) &&
-                                        n1.ComponentType != "SDS")
+                                        !string.Equals(n1.ComponentType, "SDS", StringComparison.OrdinalIgnoreCase))
                                     {
                                         string t1;
                                         switch (n1.ComponentType)
@@ -1012,7 +866,7 @@ namespace Electre_Customize_DotNet.Reports
                  // Other side of iConnectorName
                  string ConnectingConnectorName = string.Empty;
 
-                 if (componentType.ToUpper() == "EQU")
+                 if (string.Equals(componentType, "EQU", StringComparison.OrdinalIgnoreCase))
                  {
                      foreach (var kvp in modMain.connectorMap)
                      {
@@ -1027,7 +881,7 @@ namespace Electre_Customize_DotNet.Reports
                          }
                      }
                  }
-                 else if (componentType.ToUpper() == "DIS")
+                 else if (string.Equals(componentType, "DIS", StringComparison.OrdinalIgnoreCase))
                  {
                      // BreakConnectorName = iConnectorName.Substring(0, iConnectorName.Length - 1);
                      // Get the last character of iConnectorName
@@ -1047,11 +901,11 @@ namespace Electre_Customize_DotNet.Reports
                      //GivenSide = iConnectorName.Substring(iConnectorName.Length - 2);
 
                      //// Determine MatchingSide based on GivenSide
-                     //if (GivenSide.ToUpper() == "_F")
+                     //if (string.Equals(GivenSide, "_F", StringComparison.OrdinalIgnoreCase))
                      //{
                      //    MatchingSide = "_M";
                      //}
-                     //else if (GivenSide.ToUpper() == "_M")
+                     //else if (string.Equals(GivenSide, "_M", StringComparison.OrdinalIgnoreCase))
                      //{
                      //    MatchingSide = "_F";
                      //}
@@ -1521,11 +1375,11 @@ namespace Electre_Customize_DotNet.Reports
              GivenSide = iConnectorName.Substring(iConnectorName.Length - 1);
 
              // Determine MatchingSide based on GivenSide
-             if (GivenSide.ToLower() == "f")
+             if (string.Equals(GivenSide, "f", StringComparison.OrdinalIgnoreCase))
              {
                  MatchingSide = "m";
              }
-             else if (GivenSide.ToLower() == "m")
+             else if (string.Equals(GivenSide, "m", StringComparison.OrdinalIgnoreCase))
              {
                  MatchingSide = "f";
              }
@@ -1808,7 +1662,7 @@ namespace Electre_Customize_DotNet.Reports
             for (int i = 0; i < selectedLoomObject.Count; i++)
             {
                 ElectreObject electreObject = selectedLoomObject[i];
-                if (electreObject.WireNumber != "" && electreObject.ComponentType.ToUpper() == "TBK") { }
+                if (electreObject.WireNumber != "" && string.Equals(electreObject.ComponentType, "TBK", StringComparison.OrdinalIgnoreCase)) { }
             }
         }*/
 
@@ -1826,7 +1680,7 @@ namespace Electre_Customize_DotNet.Reports
 
             foreach (ElectreObject electreObject in selectedLoomObject)
             {
-                if (!string.IsNullOrEmpty(electreObject.WireNumber)  || electreObject.ComponentType.ToUpper()=="SPL")
+                if (!string.IsNullOrEmpty(electreObject.WireNumber)  || string.Equals(electreObject.ComponentType, "SPL", StringComparison.OrdinalIgnoreCase))
                 {
                     S1 =electreObject.ConnectorName +";" + electreObject.ComponentType;
 

@@ -1,4 +1,6 @@
-﻿using Electre_Customize_DotNet.MainOperation;
+﻿using Electre_Customize_DotNet.Helpers.Global;
+using Electre_Customize_DotNet.Helpers.PowerOn;
+using Electre_Customize_DotNet.MainOperation;
 using Electre_Customize_DotNet.Objects;
 using System;
 using System.Collections.Generic;
@@ -21,6 +23,9 @@ namespace Electre_Customize_DotNet.Reports
 
         public static List<ElectreObject> selectedPanelObject;
         public static List<ElectreObject> selectedSheetObject; // added for Panel Drawing schedules
+        internal static ElectreTraceIndex AllIndex;
+        private static GroundPinIndex _groundIndex;
+        private static List<ElectreObject> _groundIndexSource;
 
         public void PowerOnReportGeneration()
         {
@@ -31,8 +36,7 @@ namespace Electre_Customize_DotNet.Reports
 
         private List<ElectreObject> PanelElectreObject(List<ElectreObject> elecollection, List<string> selectedPanel)
         {
-            var collection = elecollection.Where(e => selectedPanel.Select(p => p.ToLower()).Contains(e.Panel.ToLower())).ToList();
-            return collection;
+            return ElectreCollectionFilter.ByPanel(elecollection, selectedPanel);
         }
 
         #region Power on for Panel Drawing
@@ -47,209 +51,24 @@ namespace Electre_Customize_DotNet.Reports
         // added for Panel Drawing schedules
         private List<ElectreObject> PanelElectreObject_PanelDWG(List<ElectreObject> elecollection, List<string> selectedSheet)
         {
-            var collection = elecollection.Where(e => selectedSheet.Select(p => p.ToLower()).Contains(e.SheetName.ToLower())).ToList();
-            return collection;
+            return ElectreCollectionFilter.BySheet(elecollection, selectedSheet);
         }
-        #endregion
-
-        #region //old FindGroundPin method commented on June 12
-        /*  public static string FindGroundPin(List<ElectreObject> elecCollection, ElectreObject source)
-          {
-              // Step 1: Get all GNDs in the panel
-
-              var gndObjects = elecCollection
-              .Where(e => e.ComponentType.Contains("GROUND", StringComparison.OrdinalIgnoreCase) &&
-                 e.Panel == source.Panel &&
-                (e.ConnectorName.Split('_')[0].Equals(source.ConnectorName, StringComparison.OrdinalIgnoreCase) ||
-                e.ConnectorName.Split('-')[0].Equals(source.ConnectorName, StringComparison.OrdinalIgnoreCase)))
-              .ToList();
-
-
-              if (gndObjects.Count == 0)
-                  return ""; // No GND found
-
-              var groundObj = gndObjects.First();
-
-              string currentConnectorName = groundObj.ConnectorName;
-              string currentPinNumber = groundObj.PinNumber;
-              string currentWireNumber = groundObj.WireNumber;
-              string tag = groundObj.Core_Part_Number;
-              string subNet = groundObj.SubNet;
-
-              // List<string> visitedWires = new List<string>();
-
-              // List<string> visited = new List<string>();
-              List<string> visitedConnections = new List<string>();
-
-              // Step 2: Trace the continuity path
-              while (!string.IsNullOrEmpty(currentWireNumber))
-              {
-                  // string visitKey = $"{currentConnectorName},{currentWireNumber}";
-
-                  *//*  if (visited.Contains(visitKey))
-                        break;*//* // Stop if we have already visited this connection
-
-                  //  visited.Add(visitKey);
-                  visitedConnections.Add($"{currentConnectorName},{currentPinNumber}");
-
-                  *//*var connectedObjects = modMain.ElecCollection_All
-                      .Where(w => w.WireNumber == currentWireNumber && !visitedConnections.Contains($"{w.ConnectorName},{w.PinNumber}") *//*!visitedConnectors.Contains(w.ConnectorName)*//*w.ConnectorName != lastConnectorName*//* && !string.IsNullOrEmpty(w.ConnectorName))
-                      .ToList();*//*
-                  var connectedObjects = modMain.ElecCollection_All
-                      .Where(w => w.WireNumber + "," + w.Core_Part_Number + "," + w.SubNet == currentWireNumber + "," + tag + "," + subNet && !visitedConnections.Contains($"{w.ConnectorName},{w.PinNumber}")
-                      *//*!visitedConnectors.Contains(w.ConnectorName)*//*w.ConnectorName != lastConnectorName*//* && !string.IsNullOrEmpty(w.ConnectorName))
-                      .ToList();
-
-                  if (connectedObjects.Count == 0)
-                      break; // Stop if no further connections or loop detected
-
-
-                  *//* if (connectedObjects.Count == 0 || visitedWires.Contains(currentWireNumber))
-                       break; // Stop if no further connections or loop detected
-
-                   visitedWires.Add(currentWireNumber);*//*
-
-                  foreach (var connObj in connectedObjects)
-                  {
-                      if (connObj.ConnectorName == currentConnectorName && connObj.PinNumber == currentPinNumber)
-                          continue; // Skip self
-
-                      *//* if (visited.Contains($"{connObj.ConnectorName},{connObj.WireNumber}"))
-                           continue;*//* // Prevent revisiting
-
-                      currentConnectorName = connObj.ConnectorName;
-                      currentPinNumber = connObj.PinNumber;
-
-                      visitedConnections.Add($"{currentConnectorName},{currentPinNumber}");
-
-                      switch (connObj.ComponentType)
-                      {
-                          case "EQU":
-                              currentConnectorName = $"{connObj.ConnectorName}";
-                              var nextConObj = TracePinofEQUConnector(connObj);
-                              if(nextConObj != null)
-                              {
-                                  currentConnectorName = nextConObj.ConnectorName;
-                              }
-                             *//* if (currentConnectorName.EndsWith("M", StringComparison.OrdinalIgnoreCase )|| currentConnectorName.EndsWith("F", StringComparison.OrdinalIgnoreCase ))
-                              {
-                                  var brkConnectorName = TracePinofBreakConnectorGND(connObj);
-                                  if (string.IsNullOrEmpty(brkConnectorName))
-                                  {
-                                      break;
-                                  }
-                                  currentConnectorName = brkConnectorName;
-                                  break;
-                              }*//*
-                              break;
-                          case "REL":
-                          case "SWT":
-                              *//* var ConnectorNameandPinSWT = TracePinOfSWT(connObj);
-                               if (!string.IsNullOrEmpty(ConnectorNameandPinSWT))
-                               {
-                                   string[] parts = ConnectorNameandPinSWT.Split(',');
-                                   currentConnectorName = parts[0];
-                                   currentPinNumber = parts[1];
-                               }*//*
-                              break;
-                          case "ERM":
-                          case "DD":
-                              var ConnectorNameandPinDD = TracePinOfDD(connObj);
-                              if (!string.IsNullOrEmpty(ConnectorNameandPinDD))
-                              {
-                                  string[] parts = ConnectorNameandPinDD.Split(',');
-                                  currentConnectorName = parts[0];
-                                  currentPinNumber = parts[1];
-                              }
-                              break;
-                          case "IND":
-                          case "SCB":
-                          case "TCB":
-                          case "TER":
-                              var ConnectorNameandPinTER = TracePinOfTERGND(connObj);
-                              if (!string.IsNullOrEmpty(ConnectorNameandPinTER))
-                              {
-                                  string[] parts = ConnectorNameandPinTER.Split(',');
-                                  currentConnectorName = parts[0];
-                                  currentPinNumber = parts[1];
-                              }
-                              break;
-                          case "FUS":
-                          case "POT":
-                          case "LMP":
-
-                          case "ANT":
-                          case "BUS":
-                          case "MSW":
-                              // currentConnectorName = $"%%{connObj.ConnectorName}#{connObj.PinNumber}%%";
-                              currentConnectorName = $"{connObj.ConnectorName}";
-                              break;
-                          case "DIS":
-                              var breakConnectorName = TracePinofBreakConnectorGND(connObj);
-                              if (string.IsNullOrEmpty(breakConnectorName))
-                              {
-                                  break;
-                              }
-                              currentConnectorName = breakConnectorName;
-                              break;
-
-                          case "TBK":
-                              var ConnectorNameandPinTBK = TracePinOfJMGND(connObj);
-                              if (!string.IsNullOrEmpty(ConnectorNameandPinTBK))
-                              {
-                                  string[] parts = ConnectorNameandPinTBK.Split(',');
-                                  currentConnectorName = parts[0];
-                                  currentPinNumber = parts[1];
-                              }
-                              break;
-                          case "SPL":
-                              var ConnectorNameandPinSPL = TracePinOfSPLGND(connObj);
-                              if (!string.IsNullOrEmpty(ConnectorNameandPinSPL))
-                              {
-                                  string[] parts = ConnectorNameandPinSPL.Split(',');
-                                  currentConnectorName = parts[0];
-                                  currentPinNumber = parts[1];
-                              }
-                              break;
-                          default:
-                              return currentPinNumber;//pass the for the empty value
-                                                      // break;
-                      }
-
-                      var nextWireConnection = modMain.ElecCollection_All
-                           .FirstOrDefault(w => string.Equals(w.ConnectorName, currentConnectorName, StringComparison.OrdinalIgnoreCase) && w.PinNumber == currentPinNumber);
-
-                      if (nextWireConnection != null)
-                      {
-                          currentWireNumber = nextWireConnection.WireNumber;
-                          currentConnectorName = nextWireConnection.ConnectorName;
-                          currentPinNumber = nextWireConnection.PinNumber;
-                          tag = nextWireConnection.Core_Part_Number;
-                          subNet = nextWireConnection.SubNet;
-                          break; // Move to the next wire
-                      }
-                  }
-              }
-
-              return $"{currentConnectorName},{currentPinNumber}"; // Return the final pin number for GND continuity
-          }*/
         #endregion
 
         public static List<string> FindGroundPin(List<ElectreObject> elecCollection, ElectreObject source)
         {
-            var gndObjects = elecCollection.Where(e =>
-                                    (e.ComponentType.Contains("GROUND", StringComparison.OrdinalIgnoreCase) ||
-                                     e.ComponentType.Contains("TER", StringComparison.OrdinalIgnoreCase) ||
-                                     e.ComponentType.Contains("TBK", StringComparison.OrdinalIgnoreCase)) &&
-                                    e.Panel == source.Panel &&
-                                    e.ConnectorName.StartsWith($"{source.ConnectorName}_RTN", StringComparison.OrdinalIgnoreCase)
-                                ).ToList();
+            AllIndex ??= ElectreTraceIndex.Build(modMain.ElecCollection_All);
+            if (!ReferenceEquals(_groundIndexSource, elecCollection) || _groundIndex == null)
+            {
+                _groundIndex = GroundPinIndex.Build(elecCollection);
+                _groundIndexSource = elecCollection;
+            }
 
+            var gndObjects = _groundIndex.FindForSource(source);
 
             List<string> groundConnectorAndPins = new List<string>();
-           
             if (gndObjects.Count == 0)
-                return new List<string>(); // No GND found
+                return groundConnectorAndPins;
 
             foreach (var obj in gndObjects)
             {
@@ -257,16 +76,26 @@ namespace Electre_Customize_DotNet.Reports
                 TraceAndLogPathGND(obj, obj.WireNumber, obj.ConnectorName, obj.PinNumber, obj.SubNet, visitedConnections, ref groundConnectorAndPins);
             }
 
-            return groundConnectorAndPins; // Return the final pin number for GND continuity
+            return groundConnectorAndPins;
         }
 
         private static void TraceAndLogPathGND(ElectreObject source, string wireNumber, string connectorName, string pinNumber, string subNet, HashSet<string> visited, ref List<string> groundConnectorAndPins)
         {
             visited.Add($"{connectorName},{pinNumber}");
 
-            var connectedObjects = modMain.ElecCollection_All
-                .Where(w => w.WireNumber == wireNumber && w.SubNet == subNet && !visited.Contains($"{w.ConnectorName},{w.PinNumber}"))
-                .ToList();
+            var wirePeers = AllIndex != null
+                ? AllIndex.ConnectedOnWire(wireNumber, subNet)
+                : modMain.ElecCollection_All;
+            var connectedObjects = new List<ElectreObject>();
+            for (int i = 0; i < wirePeers.Count; i++)
+            {
+                var w = wirePeers[i];
+                if (w.WireNumber == wireNumber && w.SubNet == subNet
+                    && !visited.Contains($"{w.ConnectorName},{w.PinNumber}"))
+                {
+                    connectedObjects.Add(w);
+                }
+            }
 
             if (connectedObjects.Count == 0)
             {
@@ -352,176 +181,28 @@ namespace Electre_Customize_DotNet.Reports
 
         public static ElectreObject TracePinofEQUConnector(ElectreObject eleObj)
         {
-            string lastConnectorName = eleObj.ConnectorName;
-            // Iterate through keys in the connectorMap
-            foreach (var key in modMain.connectorMap.Keys)
-            {
-                if (lastConnectorName.EndsWith(key, StringComparison.OrdinalIgnoreCase))
-                {
-                    string mappedValue = modMain.connectorMap[key];
-                    int suffixIndex = lastConnectorName.Length - key.Length;
-                    lastConnectorName = lastConnectorName.Substring(0, suffixIndex) + mappedValue;
-                    break;
-                }
-            }
-
-            var nextWireConnection = modMain.ElecCollection_All
-                                .FirstOrDefault(w => string.Equals(w.ConnectorName, lastConnectorName, StringComparison.OrdinalIgnoreCase) && w.PinNumber == eleObj.PinNumber);
-
-            return nextWireConnection;
+            return ConnectorTraceHops.TracePinofEQUConnector(eleObj, AllIndex, modMain.ElecCollection_All);
         }
 
         public static ElectreObject TracePinofBreakConnector(ElectreObject eleObj)
         {
-            string lastConnectorName = eleObj.ConnectorName;
-
-            if (lastConnectorName.EndsWith("_F", StringComparison.OrdinalIgnoreCase))
-            {
-                lastConnectorName = lastConnectorName.Substring(0, lastConnectorName.Length - 2) + "_M";
-            }
-            else if (lastConnectorName.EndsWith("_M", StringComparison.OrdinalIgnoreCase))
-            {
-                lastConnectorName = lastConnectorName.Substring(0, lastConnectorName.Length - 2) + "_F";
-            }
-
-            var nextWireConnection = modMain.ElecCollection_All
-                                .FirstOrDefault(w => string.Equals(w.ConnectorName, lastConnectorName, StringComparison.OrdinalIgnoreCase) && w.PinNumber == eleObj.PinNumber);
-
-            return nextWireConnection;           
+            return ConnectorTraceHops.TracePinofBreakConnector(eleObj, AllIndex, modMain.ElecCollection_All);
         }
 
         public static List<ElectreObject> TracePinOfJM(ElectreObject eleObj)
         {
-            var CoonnectedObjs = modMain.ElecCollection_All
-                .Where(obj => obj.ConnectorName == eleObj.ConnectorName &&
-                              obj.ComponentType == "TBK" &&
-                              obj.SubNet != eleObj.SubNet &&
-                              obj.ShuntExt1 == eleObj.ShuntExt1 &&
-                              !string.IsNullOrEmpty(obj.ShuntExt1))
-                .ToList();
-
-            return CoonnectedObjs;
+            return ConnectorTraceHops.TracePinOfJM(eleObj, AllIndex, modMain.ElecCollection_All);
         }
 
         public static List<ElectreObject> TracePinOfSPL(ElectreObject eleObj)
         {
-            var CoonnectedObjs = modMain.ElecCollection_All
-                .Where(obj => obj.ConnectorName == eleObj.ConnectorName && 
-                              obj.ComponentType == "SPL" &&
-                              obj.SubNet != eleObj.SubNet &&
-                              obj.ShuntExt1 == eleObj.ShuntExt1)
-                .ToList();
-
-            return CoonnectedObjs;
+            return ConnectorTraceHops.TracePinOfSPL(eleObj, AllIndex, modMain.ElecCollection_All);
         }
 
         public static List<ElectreObject> TracePinOfTER(ElectreObject eleObj)
         {
-            var CoonnectedObjs = modMain.ElecCollection_All
-                                    .Where(obj => obj.ConnectorName == eleObj.ConnectorName && 
-                                     obj.ComponentType == "TER" && 
-                                     obj.ShuntExt1 == eleObj.ShuntExt1 && 
-                                     obj.SubNet != eleObj.SubNet && 
-                                     !string.IsNullOrEmpty(obj.ShuntExt1))
-                                     .ToList();
-
-            return CoonnectedObjs;
+            return ConnectorTraceHops.TracePinOfTER(eleObj, AllIndex, modMain.ElecCollection_All);
         }
-
-        /* public static string TracePinofBreakConnectorGND(ElectreObject eleObj)
-       {
-           string lastConnectorName = eleObj.ConnectorName;
-
-           if (lastConnectorName.ToUpper().EndsWith("F"))
-               lastConnectorName = lastConnectorName.Replace("F", "M");
-           else if (lastConnectorName.ToUpper().EndsWith("M"))
-               lastConnectorName = lastConnectorName.Replace("M", "F");
-
-           var nextWireConnection = modMain.ElecCollection_All
-                               .FirstOrDefault(w => string.Equals(w.ConnectorName, lastConnectorName, StringComparison.OrdinalIgnoreCase) && w.PinNumber == eleObj.PinNumber);
-
-           if (nextWireConnection == null)
-           {
-               return "";
-           }
-           return lastConnectorName;
-       }*/
-
-        /*public static string TracePinOfJMGND(ElectreObject eleObj)
-        {
-            string TracePinOfJMResult = string.Empty;
-
-            var collection = modMain.ElecCollection_All.Where(obj => obj.ConnectorName == eleObj.ConnectorName && obj.ComponentType == "TBK" && obj.WireNumber != eleObj.WireNumber && obj.ShuntExt1 == eleObj.ShuntExt1);
-
-            foreach (var obj in collection)
-            {
-                TracePinOfJMResult = $"{obj.ConnectorName},{obj.PinNumber}";
-                return TracePinOfJMResult;
-            }
-            return TracePinOfJMResult;
-        }*/
-
-        /* public static string TracePinOfSPLGND(ElectreObject eleObj)
-         {
-             string TracePinOfSPLResult = string.Empty;
-
-             var CollectionObj = modMain.ElecCollection_All.Where(obj => obj.ConnectorName == eleObj.ConnectorName && obj.ComponentType == eleObj.ComponentType && obj.SubNet != eleObj.SubNet && obj.ComponentType == "SPL" && obj.ShuntExt1 == eleObj.ShuntExt1 && obj.WireNumber != eleObj.WireNumber);
-
-             foreach (var obj in CollectionObj)
-             {
-                 TracePinOfSPLResult = $"{obj.ConnectorName},{obj.PinNumber}";
-                 return TracePinOfSPLResult;
-             }
-             return TracePinOfSPLResult;
-         }*/
-
-        /*public static string TracePinOfSWT(ElectreObject eleObj)
-        {
-            string TracePinOfSWTResult = string.Empty;
-
-            var CollectionObj = modMain.ElecCollection_All.Where(obj => obj.ConnectorName == eleObj.ConnectorName && obj.ComponentType == eleObj.ComponentType);
-
-            foreach (var obj in CollectionObj)
-            {
-                if (obj.ComponentType == "SWT" && obj.PinNumber != eleObj.PinNumber)
-                {
-                    TracePinOfSWTResult = $"{obj.ConnectorName},{obj.PinNumber}";
-                    return TracePinOfSWTResult;
-                }
-            }
-            return TracePinOfSWTResult;
-        }*/
-
-        /* public static string TracePinOfTERGND(ElectreObject eleObj)
-         {
-             string TracePinOfTERResult = string.Empty;
-
-             var CollectionObj = modMain.ElecCollection_All.Where(obj => obj.ConnectorName == eleObj.ConnectorName && obj.ComponentType == "TER" && obj.ShuntExt1 == eleObj.ShuntExt1 && obj.SubNet != eleObj.SubNet && !string.IsNullOrEmpty(obj.ShuntExt1));
-
-             foreach (var obj in CollectionObj)
-             {
-                 TracePinOfTERResult = $"{obj.ConnectorName},{obj.PinNumber}";
-                 return TracePinOfTERResult;
-             }
-             return TracePinOfTERResult;
-         }*/
-
-        /*public static string TracePinOfDD(ElectreObject eleObj)
-        {
-            string TracePinOfDDResult = string.Empty;
-
-            var CollectionObj = modMain.ElecCollection_All.Where(obj => obj.ConnectorName == eleObj.ConnectorName && obj.ComponentType == eleObj.ComponentType);
-
-            foreach (var obj in CollectionObj)
-            {
-                if (obj.ComponentType == "DD" && obj.PinNumber != eleObj.PinNumber)
-                {
-                    TracePinOfDDResult = $"{obj.ConnectorName},{obj.PinNumber}";
-                    return TracePinOfDDResult;
-                }
-            }
-            return TracePinOfDDResult;
-        }*/
 
     }
 }

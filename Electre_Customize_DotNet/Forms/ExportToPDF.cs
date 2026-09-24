@@ -45,8 +45,9 @@ namespace Electre_Customize_DotNet.Forms
                 string filePath = pdflocationText.Text;
 
                 // Check if the file has a valid Excel extension (.xls or .xlsx)
-                string fileExtension = System.IO.Path.GetExtension(filePath).ToLower();
-                if (fileExtension != ".xls" && fileExtension != ".xlsx")
+                string fileExtension = System.IO.Path.GetExtension(filePath);
+                if (!string.Equals(fileExtension, ".xls", StringComparison.OrdinalIgnoreCase)
+                    && !string.Equals(fileExtension, ".xlsx", StringComparison.OrdinalIgnoreCase))
                 {
                     MessageBox.Show("The selected file is not an Excel file.");
                     generatebtn.Enabled = true;

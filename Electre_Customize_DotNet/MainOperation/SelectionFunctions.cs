@@ -77,7 +77,7 @@ namespace Electre_Customize_DotNet.MainOperation
 
         public void TextFilter(TextBox txtFilter, HashSet<string> chekedItems, CheckedListBox chkList, List<string> originalList)
         {
-            if (txtFilter.Text.ToUpper() == "SEARCH FILTER")
+            if (string.Equals(txtFilter.Text, "SEARCH FILTER", StringComparison.OrdinalIgnoreCase))
             {
                 return;
             }
@@ -86,8 +86,9 @@ namespace Electre_Customize_DotNet.MainOperation
             {
                 txtFilter.Font =new Font("Segoe UI", 10F);
                 txtFilter.ForeColor = Color.Black;
-                string filter = txtFilter.Text.ToLower();
-                var filteredItems = originalList.Where(item => item.ToLower().Contains(filter)).ToList();
+                string filter = txtFilter.Text;
+                var filteredItems = originalList.Where(item =>
+                    item != null && item.IndexOf(filter, StringComparison.OrdinalIgnoreCase) >= 0).ToList();
                 UpdateCheckedListBox(filteredItems, chekedItems, chkList);
             }
         }
@@ -220,7 +221,7 @@ namespace Electre_Customize_DotNet.MainOperation
 
         public void TextClear(TextBox txtFilter)
         {
-            if (txtFilter.Text.ToUpper() == "SEARCH FILTER")
+            if (string.Equals(txtFilter.Text, "SEARCH FILTER", StringComparison.OrdinalIgnoreCase))
             {
                 txtFilter.Text = string.Empty;
             }
